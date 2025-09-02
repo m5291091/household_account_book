@@ -1,0 +1,23 @@
+0000000000000000000000000000000000000000 9e171751981aa5179164b30f34a7caa8120565b4 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756628422 +0900	commit (initial): Initial commit
+9e171751981aa5179164b30f34a7caa8120565b4 98fe43107e355f284996f84ff76924f4cdccadf8 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756634467 +0900	commit: 複製・検索を追加
+98fe43107e355f284996f84ff76924f4cdccadf8 c47314a68faaf95750924e44c6f9593dde4d8d54 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756637514 +0900	commit: reportが機能しない
+c47314a68faaf95750924e44c6f9593dde4d8d54 21ca3394c81e7da9427ed67ced386c65168d9499 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756640562 +0900	commit: reportを削除
+21ca3394c81e7da9427ed67ced386c65168d9499 ec9094ce26853e39173abff8b7b4c36dc9def9f6 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756641224 +0900	commit: env.localを追加
+ec9094ce26853e39173abff8b7b4c36dc9def9f6 ad2127c3ca5d2551b00d37d4301575381d38a854 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756641956 +0900	commit: add tailwindcss to dependencies
+ad2127c3ca5d2551b00d37d4301575381d38a854 9f621e13ec5a35390dac8ada871f1ee1ac01ac8c Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756642212 +0900	commit: add postcss and autoprefixer to dependencies
+9f621e13ec5a35390dac8ada871f1ee1ac01ac8c f1ce87b15325f2f3ec164063dc47a0f3028e9779 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756642510 +0900	commit: update postcss configuration
+f1ce87b15325f2f3ec164063dc47a0f3028e9779 79d961bb6ca3d36b75b99ca671e8c02d5a904096 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756642975 +0900	commit: finalize postcss and dependency configuration
+79d961bb6ca3d36b75b99ca671e8c02d5a904096 197a13cb6301f1ce65cfe8d225632a142c6d0777 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756643393 +0900	commit: remove postcss.config.js to use Next.js default
+197a13cb6301f1ce65cfe8d225632a142c6d0777 8cb3ef51992b02b1db4a1c5a280f66c89fba9159 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756643885 +0900	commit: correct type error in expense edit form
+8cb3ef51992b02b1db4a1c5a280f66c89fba9159 0668b627fa80878364b4582f42dcb98b8e59e238 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756644096 +0900	commit: update moduleResolution to bundler
+0668b627fa80878364b4582f42dcb98b8e59e238 cb04b5568104fad802dc98e70764b2713a6ec650 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756648448 +0900	commit: ログアウト・リロードでもデータを保持
+cb04b5568104fad802dc98e70764b2713a6ec650 4ef0cf0f91085124f301756ad644e5ab607864ea Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756649282 +0900	commit: fix(auth): Correct AuthProvider to prevent data loss on reload
+4ef0cf0f91085124f301756ad644e5ab607864ea 1c2577388674a4985f97d9e950bd46ff46b6b7b7 Kenjo Yamamoto <alphabetagamma@Kenjo.local> 1756653636 +0900	commit: latest
+1c2577388674a4985f97d9e950bd46ff46b6b7b7 85dc7ea4f8dc0ea76580c8071a3a0aede1c2da04 Kenjo Yamamoto <applem3ky@gmail.com> 1756654159 +0900	commit: Update git config
+85dc7ea4f8dc0ea76580c8071a3a0aede1c2da04 15101659090dc1fb01348835f482e0ce4c3a2430 Kenjo Yamamoto <applem3ky@gmail.com> 1756660438 +0900	commit: 定期購入を記録する
+15101659090dc1fb01348835f482e0ce4c3a2430 796d36a50db70d563c3384dd29644d65283ad5e4 Kenjo Yamamoto <applem3ky@gmail.com> 1756662424 +0900	commit: 定期購入の編集機能
+796d36a50db70d563c3384dd29644d65283ad5e4 c1f78852865286fb6222b042f736d1910c53c7aa Kenjo Yamamoto <applem3ky@gmail.com> 1756662725 +0900	commit: 定期購入の編集機能2
+c1f78852865286fb6222b042f736d1910c53c7aa 360d5650250442ea39af23fa5d20a5b9be88590c Kenjo Yamamoto <applem3ky@gmail.com> 1756663942 +0900	commit: イレギュラー登録
+360d5650250442ea39af23fa5d20a5b9be88590c 1f647464ac08781bcaed7c9c1ffbfaf1eabf4c6d Kenjo Yamamoto <applem3ky@gmail.com> 1756664770 +0900	commit: チェック機能の色変更
+1f647464ac08781bcaed7c9c1ffbfaf1eabf4c6d 5639a6ea50b526e8ac32e76161344993a0d25c6c Kenjo Yamamoto <applem3ky@gmail.com> 1756666415 +0900	commit: カレンダー吹き出し
+5639a6ea50b526e8ac32e76161344993a0d25c6c 65fbc8a12fdc483f32dea502da09c4783b190c83 Kenjo Yamamoto <applem3ky@gmail.com> 1756783294 +0900	commit: リンクを知っている人にアクセス可能
