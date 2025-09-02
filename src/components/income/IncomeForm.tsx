@@ -1,10 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase/config';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { useAuth } from '@/contexts/AuthContext';
+import { useIncomeCategories } from '@/hooks/useIncomeCategories';
 import { Income, IncomeFormData } from '@/types/Income';
 
 interface IncomeFormProps {
@@ -12,10 +9,9 @@ interface IncomeFormProps {
   onFormClose?: () => void;
 }
 
-const incomeCategories = ['給与', 'ボーナス', '副業', '投資', '臨時収入', 'その他'];
-
 const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
   const { user } = useAuth();
+  const { categories: incomeCategories, loading: categoriesLoading, error: categoriesError } = useIncomeCategories();
   const [formData, setFormData] = useState<IncomeFormData>({ source: '', amount: '', date: new Date().toISOString().split('T')[0], category: '', memo: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,14 +88,15 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
         </div>
         <div>
           <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
-          <select name="category" id="category" value={formData.category} onChange={handleChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" required>
+          <select name="category" id="category" value={formData.category} onChange={handleChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" required disabled={categoriesLoading}>
             <option value="">カテゴリーを選択</option>
-            {incomeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            {incomeCategories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
           </select>
+          {categoriesError && <p className="text-red-500 text-sm">{categoriesError}</p>}
         </div>
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700">金額</label>
-          <input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} placeholder='300000' className="mt-1 w-full p-2 border border-gray-300 rounded-md" required />
+          <input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} placeholder='300000' className="mt-1 w-full p-2 border border-ray-300 rounded-md" required />
         </div>
         <div>
           <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>

@@ -8,6 +8,7 @@ import LogoutButton from '@/components/auth/LogoutButton';
 import CategorySettings from '@/components/settings/CategorySettings';
 import PaymentMethodSettings from '@/components/settings/PaymentMethodSettings';
 import RegularPaymentSettings from '@/components/settings/RegularPaymentSettings';
+import IncomeCategorySettings from '@/components/settings/IncomeCategorySettings';
 import Link from 'next/link';
 
 const SettingsPage = () => {
@@ -46,6 +47,7 @@ const SettingsPage = () => {
           <div className="space-y-8">
             <RegularPaymentSettings />
             <CategorySettings />
+            <IncomeCategorySettings />
             <PaymentMethodSettings />
           </div>
         </div>
