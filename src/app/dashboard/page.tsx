@@ -15,6 +15,9 @@ import BudgetStatus from '@/components/dashboard/BudgetStatus';
 import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
 import { format, addMonths, subMonths } from 'date-fns';
 import { Expense, ExpenseFormData } from '@/types/Expense';
+import { Income } from '@/types/Income';
+import IncomeForm from '@/components/income/IncomeForm';
+import IncomeList from '@/components/income/IncomeList';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -22,6 +25,7 @@ const DashboardPage = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [copiedExpenseData, setCopiedExpenseData] = useState<Partial<ExpenseFormData> | null>(null);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
+  const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,6 +56,7 @@ const DashboardPage = () => {
 
   const closeEditModal = () => {
     setExpenseToEdit(null);
+    setIncomeToEdit(null);
   };
 
   return (
@@ -96,22 +101,31 @@ const DashboardPage = () => {
             {/* Right Column for Data Entry */}
             <div className="space-y-8">
               <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
+              <IncomeForm />
               <RegularPaymentProcessor month={currentMonth} />
               <ExpenseList 
                 month={currentMonth} 
                 onEditExpense={handleEditExpense}
                 onCopyExpense={handleCopyExpense}
               />
+              <IncomeList month={currentMonth} onEditIncome={setIncomeToEdit} />
             </div>
           </div>
         </div>
       </main>
 
-      {/* Edit Expense Modal */}
+      {/* Edit Modals */}
       {expenseToEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <ExpenseForm expenseToEdit={expenseToEdit} onFormClose={closeEditModal} />
+          </div>
+        </div>
+      )}
+      {incomeToEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <IncomeForm incomeToEdit={incomeToEdit} onFormClose={closeEditModal} />
           </div>
         </div>
       )}
