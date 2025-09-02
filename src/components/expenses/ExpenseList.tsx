@@ -222,7 +222,24 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string) => {
     if (dayExpenses.length > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
-      const style: React.CSSProperties = { position: 'fixed', left: rect.left, top: rect.bottom, zIndex: 50, backgroundColor: 'white' };
+      const popoverHeight = 300; // 推定の高さ
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      let topPosition = rect.bottom;
+      if (spaceAbove > popoverHeight && spaceAbove > spaceBelow) {
+        topPosition = rect.top - popoverHeight;
+      }
+      
+      const style: React.CSSProperties = { 
+        position: 'fixed', 
+        left: rect.left, 
+        top: `${topPosition}px`,
+        zIndex: 50, 
+        backgroundColor: 'white',
+        maxHeight: `${popoverHeight}px`,
+        overflowY: 'auto'
+      };
       setPopover({ visible: true, expenses: dayExpenses, style, title });
     }
   };
