@@ -359,7 +359,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                        <button onClick={() => handleCopy(expense)} className="text-green-600 hover:text-green-800 mr-2">複製</button>
-                       <button onClick={() => onEditExpense(expense)} className="text-blue-600 hover:text-blue-800 mr-2">編集</button>
+                       <Link href={`/dashboard/edit-expense/${expense.id}`} className="text-blue-600 hover:text-blue-800 mr-2">編集</Link>
                        <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800">削除</button>
                     </td>
                   </tr>

@@ -1,13 +1,5 @@
-"use client";
-
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase/config';
-import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, Timestamp, updateDoc } from 'firebase/firestore';
-import { useAuth } from '@/contexts/AuthContext';
-import { RegularPayment, RegularPaymentFormData } from '@/types/RegularPayment';
-import { Category } from '@/types/Category';
-import { PaymentMethod } from '@/types/PaymentMethod';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 const RegularPaymentSettings = () => {
   const { user, loading: authLoading } = useAuth();
@@ -24,7 +16,6 @@ const RegularPaymentSettings = () => {
     interval: '1',
     nextPaymentDate: '',
   });
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,22 +41,7 @@ const RegularPaymentSettings = () => {
       interval: '1',
       nextPaymentDate: '',
     });
-    setEditingTemplateId(null);
     setError(null);
-  };
-
-  const handleEditClick = (template: RegularPayment) => {
-    setEditingTemplateId(template.id);
-    setFormData({
-      name: template.name,
-      amount: template.amount.toString(),
-      categoryId: template.categoryId,
-      paymentMethodId: template.paymentMethodId,
-      paymentDay: template.paymentDay.toString(),
-      frequency: template.frequency,
-      interval: template.interval.toString(),
-      nextPaymentDate: format(template.nextPaymentDate.toDate(), 'yyyy-MM-dd'),
-    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -93,24 +69,16 @@ const RegularPaymentSettings = () => {
         nextPaymentDate: Timestamp.fromDate(nextPaymentDate),
       };
 
-      if (editingTemplateId) {
-        const templateRef = doc(db, 'users', user.uid, 'regularPayments', editingTemplateId);
-        await updateDoc(templateRef, dataToSave);
-      } else {
-        await addDoc(collection(db, 'users', user.uid, 'regularPayments'), dataToSave);
-      }
+      await addDoc(collection(db, 'users', user.uid, 'regularPayments'), dataToSave);
       resetForm();
     } catch (err) {
       console.error(err);
-      setError(editingTemplateId ? 'テンプレートの更新に失敗しました。' : 'テンプレートの追加に失敗しました。');
+      setError('テンプレートの追加に失敗しました。');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!user || !confirm('このテンプレートを削除しますか？')) return;
-    if (editingTemplateId === id) {
-      resetForm();
-    }
     await deleteDoc(doc(db, 'users', user.uid, 'regularPayments', id));
   };
 
@@ -119,14 +87,14 @@ const RegularPaymentSettings = () => {
       <h2 className="text-2xl font-bold mb-6 text-gray-800">定期支出の管理</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-4 mb-8 p-4 border rounded-lg">
-        <h3 className="text-lg font-semibold">{editingTemplateId ? 'テンプレートを編集' : '新規テンプレート追加'}</h3>
+        <h3 className="text-lg font-semibold">新規テンプレート追加</h3>
         <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="名称 (例: 家賃)" required className="w-full p-2 border rounded"/>
         <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="基準額" required className="w-full p-2 border rounded"/>
         <select name="categoryId" value={formData.categoryId} onChange={handleChange} required className="w-full p-2 border rounded"><option value="">カテゴリー</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <select name="paymentMethodId" value={formData.paymentMethodId} onChange={handleChange} required className="w-full p-2 border rounded"><option value="">支払い方法</option>{paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         
         <div>
-          <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700">次回支払日</label>
+          <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700">初回支払日</label>
           <input type="date" id="nextPaymentDate" name="nextPaymentDate" value={formData.nextPaymentDate} onChange={handleChange} required className="w-full p-2 border rounded"/>
         </div>
 
@@ -140,13 +108,8 @@ const RegularPaymentSettings = () => {
         </div>
         <div className="flex space-x-2">
           <button type="submit" className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            {editingTemplateId ? '更新' : '追加'}
+            追加
           </button>
-          {editingTemplateId && (
-            <button type="button" onClick={resetForm} className="w-full bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded">
-              キャンセル
-            </button>
-          )}
         </div>
       </form>
       <h3 className="text-lg font-semibold mb-4">登録済みテンプレート</h3>
@@ -161,7 +124,7 @@ const RegularPaymentSettings = () => {
                 </p>
               </div>
               <div className="flex space-x-2">
-                <button onClick={() => handleEditClick(t)} className="text-blue-500 hover:text-blue-700">編集</button>
+                <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700">編集</Link>
                 <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">削除</button>
               </div>
             </li>
@@ -172,4 +135,3 @@ const RegularPaymentSettings = () => {
   );
 };
 
-export default RegularPaymentSettings;
