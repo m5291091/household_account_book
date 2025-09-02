@@ -20,8 +20,7 @@ interface ExpenseListProps {
 interface PopoverState {
   visible: boolean;
   expenses: Expense[];
-  top: number;
-  left: number;
+  style: React.CSSProperties;
   title: string;
 }
 
@@ -33,7 +32,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], top: 0, left: 0, title: '' });
+  const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '' });
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [searchQuery, setSearchQuery] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -123,11 +122,28 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string) => {
     if (dayExpenses.length > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
+      const popoverHeight = 320; // Approximate height of the popover including padding and buttons
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      const style: React.CSSProperties = {
+        position: 'fixed',
+        left: rect.left,
+        zIndex: 50,
+        backgroundColor: 'white'
+      };
+
+      if (spaceBelow < popoverHeight && rect.top > popoverHeight) {
+        // Not enough space below, and enough space above, so show on top
+        style.bottom = window.innerHeight - rect.top;
+      } else {
+        // Default to showing below
+        style.top = rect.bottom;
+      }
+
       setPopover({
         visible: true,
         expenses: dayExpenses,
-        top: rect.bottom,
-        left: rect.left,
+        style: style,
         title: title,
       });
     }
@@ -244,7 +260,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
             </tbody>
           </table>
           {popover.visible && createPortal(
-            <div ref={popoverRef} style={{ position: 'fixed', top: popover.top, left: popover.left, zIndex: 50, backgroundColor: 'white' }} className="p-4 rounded-lg shadow-xl border w-80">
+            <div ref={popoverRef} style={popover.style} className="p-4 rounded-lg shadow-xl border w-80">
               <h3 className="text-md font-bold mb-2">{popover.title}</h3>
               <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
                 {popover.expenses.map(expense => (
