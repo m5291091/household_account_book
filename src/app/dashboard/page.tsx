@@ -12,6 +12,7 @@ import DashboardSummary from '@/components/dashboard/DashboardSummary';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
+import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
 import { format, addMonths, subMonths } from 'date-fns';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 
@@ -89,6 +90,7 @@ const DashboardPage = () => {
               <BudgetStatus month={currentMonth} />
               <PaymentMethodChart month={currentMonth} />
               <DashboardCharts month={currentMonth} />
+              <ExpenseAnalyzer />
             </div>
 
             {/* Right Column for Data Entry */}
