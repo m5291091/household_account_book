@@ -119,6 +119,54 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     alert('支出フォームに内容をコピーしました。');
   };
 
+  const handleExportCSV = () => {
+    const expensesToExport = allExpenses;
+    if (expensesToExport.length === 0) {
+      alert('エクスポート対象のデータがありません。');
+      return;
+    }
+
+    // Helper to escape CSV fields if they contain commas, quotes, or newlines
+    const escapeCSV = (str: string | undefined | null): string => {
+      if (str === null || str === undefined) return '';
+      const s = String(str);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const headers = ['日付', '金額', 'カテゴリ', '支払方法', '店名', 'メモ', '種別'];
+    const csvRows = [headers.join(',')];
+
+    const dataRows = expensesToExport.map(exp => {
+      const row = [
+        format(exp.date.toDate(), 'yyyy-MM-dd'),
+        exp.amount.toString(),
+        categories.find(c => c.id === exp.categoryId)?.name || '未分類',
+        paymentMethods.find(p => p.id === exp.paymentMethodId)?.name || '不明',
+        exp.store || '',
+        exp.memo || '',
+        exp.isIrregular ? 'イレギュラー' : '定常'
+      ];
+      return row.map(escapeCSV).join(',');
+    });
+
+    csvRows.push(...dataRows);
+    const csvString = csvRows.join('\n');
+
+    // Create and download the file
+    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `支出履歴_${format(month, 'yyyy-MM')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string) => {
     if (dayExpenses.length > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -184,6 +232,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
         <div className="flex space-x-2">
           <button onClick={() => setViewMode('calendar')} className={`px-3 py-1 text-sm font-medium rounded-md ${viewMode === 'calendar' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>カレンダー</button>
           <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-sm font-medium rounded-md ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>リスト</button>
+          <button onClick={handleExportCSV} className="px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700">CSVエクスポート</button>
         </div>
       </div>
 
