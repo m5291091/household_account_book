@@ -382,7 +382,15 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                     {monthDays.map(day => {
                       const dayExpenses = expensesByPaymentMethod[pm.id]?.[day] || [];
                       const cellTotal = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-                      const cellStyle = { border: '1px solid #A9A9A9', padding: '8px', verticalAlign: 'top', minWidth: '120px', cursor: dayExpenses.length > 0 ? 'pointer' : 'default' };
+                      const allChecked = dayExpenses.length > 0 && dayExpenses.every(exp => exp.isChecked);
+                      const cellStyle: React.CSSProperties = { 
+                        border: '1px solid #A9A9A9', 
+                        padding: '8px', 
+                        verticalAlign: 'top', 
+                        minWidth: '120px', 
+                        cursor: dayExpenses.length > 0 ? 'pointer' : 'default',
+                        backgroundColor: allChecked ? '#d4edda' : 'transparent' // 蛍光色のような緑色
+                      };
                       return (
                         <td key={day} style={cellStyle} onClick={(e) => handleCellClick(e, dayExpenses, `${format(month, 'M月')}${day}日の支出`)}>
                           {dayExpenses.length === 1 && <div className="text-xs text-center p-1 bg-blue-100 rounded"><p className="font-semibold">¥{dayExpenses[0].amount.toLocaleString()}</p></div>}
@@ -411,7 +419,9 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                           <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2"/>
                           <div>
                             <p className="text-sm font-semibold">¥{expense.amount.toLocaleString()}</p>
-                            <p className="text-xs text-gray-600">{expense.store || 'N/A'} ({categories.find(c=>c.id === expense.categoryId)?.name || '未分類'})</p>
+                            <p className="text-xs text-gray-600">{expense.store || 'N/A'}</p>
+                            <p className="text-xs text-gray-500">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
+                            {expense.memo && <p className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</p>}
                           </div>
                         </div>
                       </div>
