@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase/config';
+import { collection, addDoc, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIncomeCategories } from '@/hooks/useIncomeCategories';
 import { Income, IncomeFormData } from '@/types/Income';
