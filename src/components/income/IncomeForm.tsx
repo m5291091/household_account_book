@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIncomeCategories } from '@/hooks/useIncomeCategories';
 import { Income, IncomeFormData } from '@/types/Income';
