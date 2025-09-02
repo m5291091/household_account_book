@@ -69,7 +69,7 @@ const DashboardPage = () => {
         </div>
       </header>
 
-      <main className="pt-8 pb-16">
+      <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Month Navigation */}
           <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow-md">
