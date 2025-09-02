@@ -20,6 +20,7 @@ import { Income } from '@/types/Income';
 import IncomeForm from '@/components/income/IncomeForm';
 import IncomeList from '@/components/income/IncomeList';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
+import StoreChart from '@/components/dashboard/StoreChart';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -102,6 +103,7 @@ const DashboardPage = () => {
               <BudgetStatus month={currentMonth} />
               <PaymentMethodChart month={currentMonth} />
               <DashboardCharts month={currentMonth} />
+              <StoreChart month={currentMonth} />
               <ExpenseAnalyzer />
             </div>
 
