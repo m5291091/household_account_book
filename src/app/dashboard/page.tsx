@@ -9,6 +9,7 @@ import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseList from '@/components/expenses/ExpenseList';
 import RegularPaymentProcessor from '@/components/expenses/RegularPaymentProcessor';
 import DashboardSummary from '@/components/dashboard/DashboardSummary';
+import IncomeExpenseChart from '@/components/dashboard/IncomeExpenseChart';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
@@ -92,6 +93,7 @@ const DashboardPage = () => {
             {/* Left Column for Analysis */}
             <div className="space-y-8">
               <DashboardSummary month={currentMonth} />
+              <IncomeExpenseChart month={currentMonth} />
               <BudgetStatus month={currentMonth} />
               <PaymentMethodChart month={currentMonth} />
               <DashboardCharts month={currentMonth} />
