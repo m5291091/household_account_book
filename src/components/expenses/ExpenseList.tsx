@@ -9,6 +9,7 @@ import { PaymentMethod } from '@/types/PaymentMethod';
 import { Category } from '@/types/Category';
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { createPortal } from 'react-dom';
 
 interface ExpenseListProps {
   month: Date;
@@ -125,8 +126,8 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
       setPopover({
         visible: true,
         expenses: dayExpenses,
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom,
+        left: rect.left,
         title: title,
       });
     }
@@ -242,8 +243,8 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
               })}
             </tbody>
           </table>
-          {popover.visible && (
-            <div ref={popoverRef} style={{ position: 'absolute', top: popover.top, left: popover.left, zIndex: 50 }} className="bg-white p-4 rounded-lg shadow-xl border w-80">
+          {popover.visible && createPortal(
+            <div ref={popoverRef} style={{ position: 'fixed', top: popover.top, left: popover.left, zIndex: 50 }} className="bg-white p-4 rounded-lg shadow-xl border w-80">
               <h3 className="text-md font-bold mb-2">{popover.title}</h3>
               <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
                 {popover.expenses.map(expense => (
@@ -267,7 +268,8 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                 ))}
               </ul>
               <button onClick={() => setPopover({ ...popover, visible: false })} className="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-sm py-1 px-2 rounded">閉じる</button>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       ) : (
