@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, orderBy, where, Timestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
-import { Expense, ExpenseFormData } from '@/types/Expense';
+import { Expense, ExpenseFormData, CHECK_COLORS, CheckColor } from '@/types/Expense';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import { Category } from '@/types/Category';
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, parseISO } from 'date-fns';
@@ -15,6 +15,7 @@ interface ExpenseListProps {
   month: Date;
   onEditExpense: (expense: Expense) => void;
   onCopyExpense: (data: Partial<ExpenseFormData>) => void;
+  onAddExpense: (date: Date) => void;
 }
 
 interface PopoverState {
@@ -22,9 +23,19 @@ interface PopoverState {
   expenses: Expense[];
   style: React.CSSProperties;
   title: string;
+  date: Date | null;
 }
 
 type BulkEditField = 'categoryId' | 'paymentMethodId' | 'store' | 'memo' | 'date';
+
+const CHECK_COLOR_MAP: { [key: string]: string } = {
+  yellow: 'bg-yellow-200',
+  green: 'bg-green-200',
+  blue: 'bg-blue-200',
+  red: 'bg-red-200',
+  orange: 'bg-orange-200',
+  purple: 'bg-purple-200',
+};
 
 const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +44,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '' });
+  const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '', date: null });
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -128,12 +139,15 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     } catch (err) { console.error(err); setError('支出の削除に失敗しました。'); }
   };
   
-  const handleToggleCheck = async (expenseToToggle: Expense) => {
+  const handleCheckColorChange = async (expenseToUpdate: Expense, color: CheckColor | null) => {
     if (!user) return;
-    const expenseRef = doc(db, 'users', user.uid, 'expenses', expenseToToggle.id);
+    const expenseRef = doc(db, 'users', user.uid, 'expenses', expenseToUpdate.id);
     try {
-      await updateDoc(expenseRef, { isChecked: !expenseToToggle.isChecked });
-    } catch (err) { console.error(err); setError('支出のチェック状態の更新に失敗しました。'); }
+      await updateDoc(expenseRef, { checkColor: color });
+    } catch (err) {
+      console.error(err);
+      setError('支出のチェック色の更新に失敗しました。');
+    }
   };
 
   const handleCopy = (expense: Expense) => {
@@ -199,11 +213,11 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     }
   };
 
-  const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string) => {
+  const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string, date: Date) => {
     if (dayExpenses.length > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
       const style: React.CSSProperties = { position: 'fixed', left: rect.left, top: rect.bottom, zIndex: 50, backgroundColor: 'white' };
-      setPopover({ visible: true, expenses: dayExpenses, style, title });
+      setPopover({ visible: true, expenses: dayExpenses, style, title, date });
     }
   };
 
@@ -382,15 +396,22 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                     {monthDays.map(day => {
                       const dayExpenses = expensesByPaymentMethod[pm.id]?.[day] || [];
                       const cellTotal = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-                      const cellStyle = { border: '1px solid #A9A9A9', padding: '8px', verticalAlign: 'top', minWidth: '120px', cursor: dayExpenses.length > 0 ? 'pointer' : 'default' };
+                      const areAllChecked = dayExpenses.length > 0 && dayExpenses.every(exp => exp.checkColor);
+                      const cellBgColorClass = areAllChecked && dayExpenses[0].checkColor ? CHECK_COLOR_MAP[dayExpenses[0].checkColor] : '';
+                      const cellClassName = `border border-gray-300 p-2 align-top min-w-[120px] ${dayExpenses.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${cellBgColorClass}`;
+                      
+                      const date = new Date(month.getFullYear(), month.getMonth(), day);
                       return (
-                        <td key={day} style={cellStyle} onClick={(e) => handleCellClick(e, dayExpenses, `${format(month, 'M月')}${day}日の支出`)}>
+                        <td key={day} className={cellClassName} onClick={(e) => handleCellClick(e, dayExpenses, `${format(date, 'M月d日')}の支出`, date)}>
                           {dayExpenses.length === 1 && <div className="text-xs text-center p-1 bg-blue-100 rounded"><p className="font-semibold">¥{dayExpenses[0].amount.toLocaleString()}</p></div>}
                           {dayExpenses.length > 1 && <div className="text-xs p-1 bg-purple-100 rounded"><p className="font-bold text-center">合計: ¥{cellTotal.toLocaleString()}</p><p className="text-center">({dayExpenses.length}件)</p></div>}
                         </td>
                       );
                     })}
-                    <td style={{ border: '1px solid #A9A9A9', padding: '8px', verticalAlign: 'top', minWidth: '120px', cursor: pmIrregularExpenses.length > 0 ? 'pointer' : 'default' }} onClick={(e) => handleCellClick(e, pmIrregularExpenses, `${format(month, 'M月')}のイレギュラー支出`)}>
+                    <td 
+                      style={{ border: '1px solid #A9A9A9', padding: '8px', verticalAlign: 'top', minWidth: '120px', cursor: pmIrregularExpenses.length > 0 ? 'pointer' : 'default' }} 
+                      onClick={(e) => handleCellClick(e, pmIrregularExpenses, `${format(month, 'M月')}のイレギュラー支出`, startOfMonth(month))}
+                    >
                       {pmIrregularExpenses.length > 0 && <div className="text-xs p-1 bg-yellow-100 rounded"><p className="font-bold text-center">合計: ¥{irregularTotal.toLocaleString()}</p><p className="text-center">({pmIrregularExpenses.length}件)</p></div>}
                     </td>
                     <td style={{ border: '1px solid #A9A9A9', padding: '8px', fontWeight: 'bold', textAlign: 'right', position: 'sticky', right: 0, backgroundColor: 'white', zIndex: 10 }}>¥{totalsByPaymentMethod[pm.id]?.toLocaleString() || 0}</td>
@@ -408,7 +429,12 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                     <div className="flex justify-between items-center">
                       <div className="flex-grow">
                         <div className="flex items-center">
-                          <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2"/>
+                          <input 
+                            type="checkbox" 
+                            checked={!!expense.checkColor} 
+                            onChange={() => handleCheckColorChange(expense, expense.checkColor ? null : 'yellow')} 
+                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2"
+                          />
                           <div>
                             <p className="text-sm font-semibold">¥{expense.amount.toLocaleString()}</p>
                             <p className="text-xs text-gray-600">{expense.store || 'N/A'} ({categories.find(c=>c.id === expense.categoryId)?.name || '未分類'})</p>
@@ -416,14 +442,36 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                         </div>
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
-                        <button onClick={() => { onEditExpense(expense); setPopover(p => ({ ...p, visible: false })); }} className="text-blue-600 hover:text-blue-800 text-xs p-1">編集</button>
-                        <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800 text-xs p-1">削除</button>
+                        {CHECK_COLORS.map(color => (
+                          <button 
+                            key={color}
+                            onClick={() => handleCheckColorChange(expense, color)}
+                            className={`w-5 h-5 rounded-full border-2 ${expense.checkColor === color ? 'border-black' : 'border-transparent'}`}
+                            style={{ backgroundColor: color }}
+                            aria-label={`Set color to ${color}`}
+                          />
+                        ))}
                       </div>
+                    </div>
+                    <div className="flex items-center justify-end mt-1 space-x-1">
+                      <button onClick={() => { onEditExpense(expense); setPopover(p => ({ ...p, visible: false })); }} className="text-blue-600 hover:text-blue-800 text-xs p-1">編集</button>
+                      <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800 text-xs p-1">削除</button>
                     </div>
                   </li>
                 ))}
               </ul>
               <button onClick={() => setPopover(p => ({ ...p, visible: false }))} className="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-sm py-1 px-2 rounded">閉じる</button>
+              {popover.date && !popover.title.includes('イレギュラー') && (
+                <button 
+                  onClick={() => {
+                    onAddExpense(popover.date!);
+                    setPopover(p => ({ ...p, visible: false }));
+                  }} 
+                  className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1 px-2 rounded"
+                >
+                  この日に新規追加
+                </button>
+              )}
             </div>,
             document.body
           )}

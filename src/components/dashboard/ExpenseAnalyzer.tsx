@@ -1,12 +1,16 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, query, onSnapshot, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import { Expense } from '@/types/Expense';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+
+// Colors for the pie chart
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff'];
 
 const ExpenseAnalyzer = () => {
   const { user } = useAuth();
@@ -19,7 +23,7 @@ const ExpenseAnalyzer = () => {
   const [searchText, setSearchText] = useState('');
 
   // Result states
-  const [totalAmount, setTotalAmount] = useState<number | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<{ name: string; value: number }[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,10 +51,9 @@ const ExpenseAnalyzer = () => {
     }
     setLoading(true);
     setError(null);
-    setTotalAmount(null);
+    setAnalysisResult(null);
 
     try {
-      // 1. Fetch data based on date range from Firestore
       const expensesQuery = query(
         collection(db, 'users', user.uid, 'expenses'),
         where('date', '>=', Timestamp.fromDate(new Date(startDate))),
@@ -60,23 +63,30 @@ const ExpenseAnalyzer = () => {
       const querySnapshot = await getDocs(expensesQuery);
       const expenses = querySnapshot.docs.map(doc => doc.data() as Expense);
 
-      // 2. Client-side filtering
       const filteredExpenses = expenses.filter(expense => {
-        // Payment method filter
         const paymentMethodMatch = selectedPaymentMethods.length === 0 || selectedPaymentMethods.includes(expense.paymentMethodId);
-        
-        // Search text filter
         const searchLower = searchText.toLowerCase();
         const textMatch = searchText === '' ||
           expense.store?.toLowerCase().includes(searchLower) ||
           expense.memo?.toLowerCase().includes(searchLower);
-          
         return paymentMethodMatch && textMatch;
       });
 
-      // 3. Calculate total
-      const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-      setTotalAmount(total);
+      // Aggregate by store
+      const byStore = filteredExpenses.reduce((acc, expense) => {
+        const storeName = expense.store || '(不明)';
+        if (!acc[storeName]) {
+          acc[storeName] = 0;
+        }
+        acc[storeName] += expense.amount;
+        return acc;
+      }, {} as { [key: string]: number });
+
+      const result = Object.entries(byStore)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value); // Sort by amount descending
+
+      setAnalysisResult(result);
 
     } catch (err) {
       console.error(err);
@@ -85,6 +95,18 @@ const ExpenseAnalyzer = () => {
       setLoading(false);
     }
   };
+
+  // Calculate total amount from analysisResult
+  const totalAmount = useMemo(() => {
+    if (!analysisResult) return null;
+    return analysisResult.reduce((sum, item) => sum + item.value, 0);
+  }, [analysisResult]);
+
+  // Prepare data for BarChart (reversed for vertical layout)
+  const barChartData = useMemo(() => {
+    if (!analysisResult) return [];
+    return [...analysisResult].reverse();
+  }, [analysisResult]);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mt-8">
@@ -140,16 +162,78 @@ const ExpenseAnalyzer = () => {
           disabled={loading}
           className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-300"
         >
-          {loading ? '分析中...' : '合計を計算'}
+          {loading ? '分析中...' : '分析実行'}
         </button>
       </div>
 
       {/* Results */}
       {error && <p className="text-red-500 text-center">{error}</p>}
-      {totalAmount !== null && (
-        <div className="text-center bg-gray-50 p-4 rounded-lg">
-          <p className="text-lg text-gray-600">選択された条件での合計支出</p>
-          <p className="text-3xl font-bold text-indigo-600">¥{totalAmount.toLocaleString()}</p>
+      
+      {analysisResult && (
+        <div className="mt-8">
+          {totalAmount !== null && totalAmount > 0 ? (
+            <>
+              <div className="text-center bg-gray-50 p-4 rounded-lg mb-8">
+                <p className="text-lg text-gray-600">選択された条件での合計支出</p>
+                <p className="text-3xl font-bold text-indigo-600">¥{totalAmount.toLocaleString()}</p>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Bar Chart */}
+                <div className="w-full">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4">店舗・サービス別支出（横棒グラフ）</h3>
+                  <div style={{ width: '100%', height: 400 }}>
+                    <ResponsiveContainer>
+                      <BarChart
+                        layout="vertical"
+                        data={barChartData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={80} />
+                        <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+                        <Legend />
+                        <Bar dataKey="value" name="支出額" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Pie Chart */}
+                <div className="w-full">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4">店舗・サービス別支出（円グラフ）</h3>
+                  <div style={{ width: '100%', height: 400 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={analysisResult}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={120}
+                          fill="#8884d8"
+                          label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                          labelLine={false}
+                        >
+                          {analysisResult.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">分析結果がありません。</p>
+            </div>
+          )}
         </div>
       )}
     </div>

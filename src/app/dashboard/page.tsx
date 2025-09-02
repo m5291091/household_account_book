@@ -15,6 +15,7 @@ import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
 import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { Timestamp } from 'firebase/firestore';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import IncomeForm from '@/components/income/IncomeForm';
@@ -51,6 +52,17 @@ const DashboardPage = () => {
 
   const handleEditExpense = (expense: Expense) => {
     setExpenseToEdit(expense);
+  };
+
+  const handleAddExpense = (date: Date) => {
+    setExpenseToEdit({
+      id: '', // New expense, so no ID yet
+      date: Timestamp.fromDate(date),
+      amount: 0,
+      categoryId: '',
+      paymentMethodId: '',
+      isIrregular: false,
+    } as Expense);
   };
 
   const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
@@ -114,6 +126,7 @@ const DashboardPage = () => {
                 month={currentMonth} 
                 onEditExpense={handleEditExpense}
                 onCopyExpense={handleCopyExpense}
+                onAddExpense={handleAddExpense}
               />
               <IncomeList month={currentMonth} onEditIncome={setIncomeToEdit} />
             </div>

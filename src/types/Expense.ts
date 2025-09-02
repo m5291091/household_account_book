@@ -14,7 +14,6 @@ export interface Expense {
   memo?: string;
   isIrregular: boolean;
   checkColor?: CheckColor | null;
-  isChecked?: boolean;
 }
 
 // This is for the form state before converting to Firestore types
