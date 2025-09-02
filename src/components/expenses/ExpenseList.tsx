@@ -10,6 +10,7 @@ import { Category } from '@/types/Category';
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 
 interface ExpenseListProps {
   month: Date;
@@ -445,7 +446,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                         </div>
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
-                        <button onClick={() => { onEditExpense(expense); setPopover(p => ({ ...p, visible: false })); }} className="text-blue-600 hover:text-blue-800 text-xs p-1">編集</button>
+                        <Link href={`/dashboard/edit-expense/${expense.id}`} className="text-blue-600 hover:text-blue-800 text-xs p-1">編集</Link>
                         <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800 text-xs p-1">削除</button>
                       </div>
                     </div>

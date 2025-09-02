@@ -27,8 +27,6 @@ const DashboardPage = () => {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [copiedExpenseData, setCopiedExpenseData] = useState<Partial<ExpenseFormData> | null>(null);
-  const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
-  const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -50,20 +48,9 @@ const DashboardPage = () => {
   const startDate = startOfMonth(currentMonth);
   const endDate = endOfMonth(currentMonth);
 
-  const handleEditExpense = (expense: Expense) => {
-    setExpenseToEdit(expense);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
     setCopiedExpenseData(data);
-    // Scroll to the top to make the form visible if it's off-screen
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const closeEditModal = () => {
-    setExpenseToEdit(null);
-    setIncomeToEdit(null);
   };
 
   return (
@@ -110,33 +97,19 @@ const DashboardPage = () => {
 
             {/* Right Column for Data Entry */}
             <div className="space-y-8">
-              <ExpenseForm 
-                initialData={copiedExpenseData} 
-                setInitialData={setCopiedExpenseData}
-                expenseToEdit={expenseToEdit}
-                onFormClose={() => setExpenseToEdit(null)}
-              />
+              <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
               <IncomeForm />
               <RegularPaymentProcessor month={currentMonth} />
               <ExpenseList 
                 month={currentMonth} 
-                onEditExpense={handleEditExpense}
+                onEditExpense={() => {}}
                 onCopyExpense={handleCopyExpense}
               />
-              <IncomeList month={currentMonth} onEditIncome={setIncomeToEdit} />
+              <IncomeList month={currentMonth} onEditIncome={() => {}} />
             </div>
           </div>
         </div>
       </main>
-
-      {/* Edit Modals */}
-      {incomeToEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <IncomeForm incomeToEdit={incomeToEdit} onFormClose={closeEditModal} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

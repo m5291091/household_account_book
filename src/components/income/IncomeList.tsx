@@ -7,6 +7,7 @@ import { collection, query, onSnapshot, deleteDoc, doc, orderBy, where, Timestam
 import { useAuth } from '@/contexts/AuthContext';
 import { Income } from '@/types/Income';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 interface IncomeListProps {
   month: Date;
@@ -73,7 +74,7 @@ const IncomeList = ({ month, onEditIncome }: IncomeListProps) => {
                 {income.memo && <p className="text-sm text-gray-500 mt-1">メモ: {income.memo}</p>}
               </div>
               <div className="flex items-center space-x-2">
-                 <button onClick={() => onEditIncome(income)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">編集</button>
+                 <Link href={`/dashboard/edit-income/${income.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">編集</Link>
                  <button onClick={() => handleDelete(income.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">削除</button>
               </div>
             </li>
