@@ -42,7 +42,7 @@ const SettingsPage = () => {
           </nav>
         </div>
       </header>
-      <main className="py-8">
+      <main className="pt-8 pb-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-8">
             <RegularPaymentSettings />
