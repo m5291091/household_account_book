@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 const IncomeExpenseChart = ({ month }: { month: Date }) => {
   const { user } = useAuth();
-  const [chartData, setChartData] = useState<{ name: string; 収入: number; 支出: number; }[]>([]);
+  const [chartData, setChartData] = useState<{ name: string; 収入: number; 支出: number; 収支: number; }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +23,8 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
     let totalIncome = 0;
 
     const updateChartData = () => {
-        setChartData([{ name: '月次', 収入: totalIncome, 支出: totalExpenses }]);
+      const netBalance = totalIncome - totalExpenses;
+      setChartData([{ name: '月次', 収入: totalIncome, 支出: totalExpenses, 収支: netBalance }]);
     };
 
     // Fetch expenses
@@ -67,15 +68,16 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-xl font-bold text-gray-800 mb-4">収入 vs 支出</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart layout="vertical" data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis tickFormatter={(value) => `¥${(value as number / 1000)}k`} />
+          <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+          <YAxis type="category" dataKey="name" width={60} />
           <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
           <Legend />
           <Bar dataKey="収入" fill="#4ade80" />
           <Bar dataKey="支出" fill="#f87171" />
+          <Bar dataKey="収支" fill="#8884d8" />
         </BarChart>
       </ResponsiveContainer>
     </div>
