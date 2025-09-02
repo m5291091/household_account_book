@@ -183,7 +183,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
       )}
 
       {viewMode === 'calendar' ? (
-        <div className="overflow-x-auto relative">
+        <div className="overflow-x-auto relative z-0">
           <table className="min-w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr className="bg-gray-100">
