@@ -98,7 +98,6 @@ const DashboardPage = () => {
             {/* Right Column for Data Entry */}
             <div className="space-y-8">
               <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
-              <IncomeForm />
               <RegularPaymentProcessor month={currentMonth} />
               <ExpenseList 
                 month={currentMonth} 
@@ -106,6 +105,7 @@ const DashboardPage = () => {
                 onCopyExpense={handleCopyExpense}
               />
               <IncomeList month={currentMonth} onEditIncome={() => {}} />
+              <IncomeForm />
             </div>
           </div>
         </div>
