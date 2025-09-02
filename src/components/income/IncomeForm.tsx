@@ -12,9 +12,11 @@ interface IncomeFormProps {
   onFormClose?: () => void;
 }
 
+const incomeCategories = ['給与', 'ボーナス', '副業', '投資', '臨時収入', 'その他'];
+
 const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<IncomeFormData>({ source: '', amount: '', date: new Date().toISOString().split('T')[0], memo: '' });
+  const [formData, setFormData] = useState<IncomeFormData>({ source: '', amount: '', date: new Date().toISOString().split('T')[0], category: '', memo: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +26,13 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
         source: incomeToEdit.source,
         amount: incomeToEdit.amount.toString(),
         date: incomeToEdit.date.toDate().toISOString().split('T')[0],
+        category: incomeToEdit.category || '',
         memo: incomeToEdit.memo || '',
       });
     }
   }, [incomeToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -37,7 +40,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { setError('ログインが必要です。'); return; }
-    if (!formData.source || !formData.amount || !formData.date) { setError('収入源、金額、日付は必須です。'); return; }
+    if (!formData.source || !formData.amount || !formData.date || !formData.category) { setError('収入源、金額、日付、カテゴリーは必須です。'); return; }
 
     setLoading(true);
     setError(null);
@@ -47,6 +50,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
         source: formData.source,
         amount: Number(formData.amount),
         date: Timestamp.fromDate(new Date(formData.date)),
+        category: formData.category,
         memo: formData.memo || '',
       };
 
@@ -63,7 +67,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
       }
       
       // Reset form and close modal
-      setFormData({ source: '', amount: '', date: new Date().toISOString().split('T')[0], memo: '' });
+      setFormData({ source: '', amount: '', date: new Date().toISOString().split('T')[0], category: '', memo: '' });
       if (onFormClose) onFormClose();
 
     } catch (err) {
@@ -87,6 +91,13 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
           <input type="text" name="source" id="source" value={formData.source} onChange={handleChange} placeholder='給与、ボーナスなど' className="mt-1 w-full p-2 border border-gray-300 rounded-md" required />
         </div>
         <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
+          <select name="category" id="category" value={formData.category} onChange={handleChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" required>
+            <option value="">カテゴリーを選択</option>
+            {incomeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+        </div>
+        <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700">金額</label>
           <input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} placeholder='300000' className="mt-1 w-full p-2 border border-gray-300 rounded-md" required />
         </div>
@@ -107,5 +118,6 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
     </div>
   );
 };
+
 
 export default IncomeForm;

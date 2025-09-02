@@ -14,11 +14,12 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
 import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import IncomeForm from '@/components/income/IncomeForm';
 import IncomeList from '@/components/income/IncomeList';
+import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -44,6 +45,9 @@ const DashboardPage = () => {
 
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+
+  const startDate = startOfMonth(currentMonth);
+  const endDate = endOfMonth(currentMonth);
 
   const handleEditExpense = (expense: Expense) => {
     setExpenseToEdit(expense);
@@ -94,6 +98,7 @@ const DashboardPage = () => {
             <div className="space-y-8">
               <DashboardSummary month={currentMonth} />
               <IncomeExpenseChart month={currentMonth} />
+              <IncomeCategoryChart startDate={startDate} endDate={endDate} />
               <BudgetStatus month={currentMonth} />
               <PaymentMethodChart month={currentMonth} />
               <DashboardCharts month={currentMonth} />
