@@ -244,7 +244,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
             </tbody>
           </table>
           {popover.visible && createPortal(
-            <div ref={popoverRef} style={{ position: 'fixed', top: popover.top, left: popover.left, zIndex: 50 }} className="bg-white p-4 rounded-lg shadow-xl border w-80">
+            <div ref={popoverRef} style={{ position: 'fixed', top: popover.top, left: popover.left, zIndex: 50, backgroundColor: 'white' }} className="p-4 rounded-lg shadow-xl border w-80">
               <h3 className="text-md font-bold mb-2">{popover.title}</h3>
               <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
                 {popover.expenses.map(expense => (
