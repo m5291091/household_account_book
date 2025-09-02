@@ -130,10 +130,29 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   
   const handleToggleCheck = async (expenseToToggle: Expense) => {
     if (!user) return;
+
+    // Optimistic UI update
+    const updatedExpenses = allMonthExpenses.map(exp => 
+      exp.id === expenseToToggle.id ? { ...exp, isChecked: !exp.isChecked } : exp
+    );
+    setAllMonthExpenses(updatedExpenses);
+
+    const updatedPopoverExpenses = popover.expenses.map(exp =>
+      exp.id === expenseToToggle.id ? { ...exp, isChecked: !exp.isChecked } : exp
+    );
+    setPopover(prev => ({ ...prev, expenses: updatedPopoverExpenses }));
+
+    // Update Firestore
     const expenseRef = doc(db, 'users', user.uid, 'expenses', expenseToToggle.id);
     try {
       await updateDoc(expenseRef, { isChecked: !expenseToToggle.isChecked });
-    } catch (err) { console.error(err); setError('支出のチェック状態の更新に失敗しました。'); }
+    } catch (err) { 
+      console.error(err); 
+      setError('支出のチェック状態の更新に失敗しました。');
+      // Revert on error
+      setAllMonthExpenses(allMonthExpenses);
+      setPopover(prev => ({ ...prev, expenses: popover.expenses }));
+    }
   };
 
   const handleCopy = (expense: Expense) => {

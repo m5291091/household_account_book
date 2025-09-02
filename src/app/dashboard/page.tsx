@@ -52,6 +52,7 @@ const DashboardPage = () => {
 
   const handleEditExpense = (expense: Expense) => {
     setExpenseToEdit(expense);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
@@ -109,7 +110,12 @@ const DashboardPage = () => {
 
             {/* Right Column for Data Entry */}
             <div className="space-y-8">
-              <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
+              <ExpenseForm 
+                initialData={copiedExpenseData} 
+                setInitialData={setCopiedExpenseData}
+                expenseToEdit={expenseToEdit}
+                onFormClose={() => setExpenseToEdit(null)}
+              />
               <IncomeForm />
               <RegularPaymentProcessor month={currentMonth} />
               <ExpenseList 
@@ -124,13 +130,6 @@ const DashboardPage = () => {
       </main>
 
       {/* Edit Modals */}
-      {expenseToEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <ExpenseForm expenseToEdit={expenseToEdit} onFormClose={closeEditModal} />
-          </div>
-        </div>
-      )}
       {incomeToEdit && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
