@@ -1,3 +1,12 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase/config';
+import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { RegularPayment, RegularPaymentFormData } from '@/types/RegularPayment';
+import { Category } from '@/types/Category';
+import { PaymentMethod } from '@/types/PaymentMethod';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -135,3 +144,4 @@ const RegularPaymentSettings = () => {
   );
 };
 
+export default RegularPaymentSettings;
