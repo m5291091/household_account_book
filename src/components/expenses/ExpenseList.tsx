@@ -37,7 +37,7 @@ const CHECK_COLOR_MAP: { [key: string]: string } = {
   purple: 'bg-purple-200',
 };
 
-const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) => {
+const ExpenseList = ({ month, onEditExpense, onCopyExpense, onAddExpense }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
   const [allMonthExpenses, setAllMonthExpenses] = useState<Expense[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
