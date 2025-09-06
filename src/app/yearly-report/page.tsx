@@ -12,8 +12,6 @@ import {
 } from 'recharts';
 import { Expense } from '@/types/Expense';
 import { Income } from '@/types/Income';
-import { Category } from '@/types/Category';
-import { IncomeCategory } from '@/types/IncomeCategory';
 import { PaymentMethod } from '@/types/PaymentMethod';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff', '#ff8c00', '#9932cc', '#20b2aa', '#d2691e'];
@@ -53,13 +51,6 @@ const YearlyReportPage = () => {
       const catMap = new Map<string, string>();
       catSnapshot.forEach(doc => catMap.set(doc.id, doc.data().name));
       setExpenseCategories(catMap);
-
-      // Fetch income categories
-      const incCatQuery = query(collection(db, 'users', user.uid, 'incomeCategories'));
-      const incCatSnapshot = await getDocs(incCatQuery);
-      const incCatMap = new Map<string, string>();
-      incCatSnapshot.forEach(doc => incCatMap.set(doc.id, doc.data().name));
-      setIncomeCategories(incCatMap);
 
       // Fetch payment methods
       const pmQuery = query(collection(db, 'users', user.uid, 'paymentMethods'));
@@ -145,11 +136,11 @@ const YearlyReportPage = () => {
   const incomeByCategory = useMemo(() => {
     const dataMap = new Map<string, number>();
     incomes.forEach(inc => {
-      const name = incomeCategories.get(inc.incomeCategoryId) || '未分類';
+      const name = inc.category || '未分類';
       dataMap.set(name, (dataMap.get(name) || 0) + inc.amount);
     });
     return Array.from(dataMap.entries()).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
-  }, [incomes, incomeCategories]);
+  }, [incomes]);
 
   const expenseByStore = useMemo(() => {
     const dataMap = new Map<string, number>();
