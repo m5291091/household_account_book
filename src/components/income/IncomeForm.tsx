@@ -25,7 +25,14 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
   const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Refs for focus management
   const formRef = useRef<HTMLDivElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const taxRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLInputElement>(null);
+  const memoRef = useRef<HTMLTextAreaElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   useImperativeHandle(ref, () => ({
     scrollIntoView: () => {
@@ -75,6 +82,30 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      const target = e.target as HTMLElement;
+      
+      switch (target.id) {
+        case 'amount':
+          taxRef.current?.focus();
+          break;
+        case 'totalTaxableAmount':
+          categoryRef.current?.focus();
+          break;
+        case 'category':
+          memoRef.current?.focus();
+          break;
+        case 'memo':
+          submitButtonRef.current?.focus();
+          break;
+        default:
+          break;
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,27 +162,27 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
         </div>
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700">差引支給額</label>
-          <input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} placeholder="手取り額" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <input ref={amountRef} type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="手取り額" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
           <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700">課税合計</label>
-          <input type="number" name="totalTaxableAmount" id="totalTaxableAmount" value={formData.totalTaxableAmount} onChange={handleChange} placeholder="所得税・住民税など" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <input ref={taxRef} type="number" name="totalTaxableAmount" id="totalTaxableAmount" value={formData.totalTaxableAmount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="所得税・住民税など" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
           <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
-          <input list="income-categories" name="category" id="category" value={formData.category} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <input ref={categoryRef} list="income-categories" name="category" id="category" value={formData.category} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
           <datalist id="income-categories">
             {categories.map(cat => <option key={cat} value={cat} />)}
           </datalist>
         </div>
         <div>
           <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
-          <textarea name="memo" id="memo" value={formData.memo} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+          <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
         <div className="flex items-center space-x-4">
-          <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button ref={submitButtonRef} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             {isEditMode ? '更新する' : '記録する'}
           </button>
           {isEditMode && onFormClose && (
