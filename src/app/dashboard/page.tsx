@@ -61,6 +61,9 @@ const DashboardPage = () => {
             ダッシュボード
           </h1>
           <nav className="flex items-center space-x-4">
+            <Link href="/yearly-report" className="text-gray-600 hover:text-gray-900">
+              年間レポート
+            </Link>
             <Link href="/settings" className="text-gray-600 hover:text-gray-900">
               設定
             </Link>
