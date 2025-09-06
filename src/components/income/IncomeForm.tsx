@@ -1,12 +1,11 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIncomeCategories } from '@/hooks/useIncomeCategories';
-import { Income, IncomeFormData } from '@/types/Income';
+import { Income } from '@/types/Income';
+import { format } from 'date-fns';
 
 interface IncomeFormProps {
   incomeToEdit?: Income | null;
@@ -113,7 +112,14 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditMode ? '収入を編集' : '収入を記録'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* ... other fields ... */}
+        <div>
+          <label htmlFor="date" className="block text-sm font-medium text-gray-700">日付</label>
+          <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+        </div>
+        <div>
+          <label htmlFor="source" className="block text-sm font-medium text-gray-700">収入源</label>
+          <input type="text" name="source" id="source" value={formData.source} onChange={handleChange} placeholder="給与、ボーナスなど" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+        </div>
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700">差引支給額</label>
           <input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} placeholder="手取り額" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
@@ -122,7 +128,19 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
           <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700">課税合計</label>
           <input type="number" name="totalTaxableAmount" id="totalTaxableAmount" value={formData.totalTaxableAmount} onChange={handleChange} placeholder="所得税・住民税など" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
-        {/* ... other fields ... */}
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
+          <input list="income-categories" name="category" id="category" value={formData.category} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <datalist id="income-categories">
+            {categories.map(cat => <option key={cat} value={cat} />)}
+          </datalist>
+        </div>
+        <div>
+          <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
+          <textarea name="memo" id="memo" value={formData.memo} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+        </div>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {success && <p className="text-green-500 text-sm">{success}</p>}
         <div className="flex items-center space-x-4">
           <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             {isEditMode ? '更新する' : '記録する'}
@@ -137,6 +155,5 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
     </div>
   );
 };
-
 
 export default IncomeForm;
