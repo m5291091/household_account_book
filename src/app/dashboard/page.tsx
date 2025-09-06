@@ -22,6 +22,7 @@ import IncomeList from '@/components/income/IncomeList';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
 import ExpensePredictor from '@/components/dashboard/ExpensePredictor';
+import ExpenseCSVDownloader from '@/components/dashboard/ExpenseCSVDownloader';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -109,6 +110,7 @@ const DashboardPage = () => {
               <DashboardCharts month={currentMonth} />
               <StoreChart month={currentMonth} />
               <ExpenseAnalyzer />
+              <ExpenseCSVDownloader />
             </div>
 
             {/* Right Column for Data Entry */}
