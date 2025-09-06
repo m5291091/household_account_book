@@ -107,11 +107,12 @@ const YearlyReportPage = () => {
   // --- Data Processing with useMemo ---
 
   const totalYearlyExpense = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses]);
-  const totalYearlyIncome = useMemo(() => incomes.reduce((sum, inc) => sum + inc.amount, 0), [incomes]);
+  const totalYearlyNetIncome = useMemo(() => incomes.reduce((sum, inc) => sum + inc.amount, 0), [incomes]);
+  const totalYearlyTax = useMemo(() => incomes.reduce((sum, inc) => sum + (inc.totalTaxableAmount || 0), 0), [incomes]);
 
   const monthlyData = useMemo(() => {
     const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-    const data = monthNames.map(name => ({ name, "支出": 0, "収入": 0 }));
+    const data = monthNames.map(name => ({ name, "支出": 0, "差引支給額": 0, "課税合計": 0 }));
 
     expenses.forEach(exp => {
       const month = getMonth(exp.date.toDate());
@@ -119,7 +120,8 @@ const YearlyReportPage = () => {
     });
     incomes.forEach(inc => {
       const month = getMonth(inc.date.toDate());
-      data[month]["収入"] += inc.amount;
+      data[month]["差引支給額"] += inc.amount;
+      data[month]["課税合計"] += inc.totalTaxableAmount || 0;
     });
     return data;
   }, [expenses, incomes]);
@@ -215,19 +217,23 @@ const YearlyReportPage = () => {
       </div>
 
       {/* --- Summary --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
           <h2 className="text-lg font-semibold text-gray-600">年間合計支出</h2>
           <p className="text-3xl font-bold text-red-500">¥{totalYearlyExpense.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
-          <h2 className="text-lg font-semibold text-gray-600">年間合計収入</h2>
-          <p className="text-3xl font-bold text-green-500">¥{totalYearlyIncome.toLocaleString()}</p>
+          <h2 className="text-lg font-semibold text-gray-600">年間合計 差引支給額</h2>
+          <p className="text-3xl font-bold text-green-500">¥{totalYearlyNetIncome.toLocaleString()}</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md text-center">
+          <h2 className="text-lg font-semibold text-gray-600">年間累積 課税合計</h2>
+          <p className="text-3xl font-bold text-yellow-600">¥{totalYearlyTax.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
           <h2 className="text-lg font-semibold text-gray-600">年間収支</h2>
-          <p className={`text-3xl font-bold ${totalYearlyIncome - totalYearlyExpense >= 0 ? 'text-blue-500' : 'text-red-600'}`}>
-            ¥{(totalYearlyIncome - totalYearlyExpense).toLocaleString()}
+          <p className={`text-3xl font-bold ${totalYearlyNetIncome - totalYearlyExpense >= 0 ? 'text-blue-500' : 'text-red-600'}`}>
+            ¥{(totalYearlyNetIncome - totalYearlyExpense).toLocaleString()}
           </p>
         </div>
       </div>
@@ -244,7 +250,25 @@ const YearlyReportPage = () => {
               <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
               <Legend />
               <Line type="monotone" dataKey="支出" stroke="#ef4444" strokeWidth={2} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="収入" stroke="#22c55e" strokeWidth={2} />
+              <Line type="monotone" dataKey="差引支給額" stroke="#22c55e" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      
+      {/* --- Monthly Income Breakdown --- */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">月別収入内訳の推移</h2>
+        <div style={{ width: '100%', height: 400 }}>
+          <ResponsiveContainer>
+            <LineChart data={monthlyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis tickFormatter={(value) => `¥${(value as number / 10000).toLocaleString()}万`} />
+              <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+              <Legend />
+              <Line type="monotone" dataKey="差引支給額" stroke="#22c55e" strokeWidth={2} />
+              <Line type="monotone" dataKey="課税合計" stroke="#f59e0b" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
