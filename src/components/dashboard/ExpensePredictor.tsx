@@ -22,13 +22,14 @@ const ExpensePredictor = ({ month }: { month: Date }) => {
   const [categories, setCategories] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analysisPeriod, setAnalysisPeriod] = useState<number>(12); // Default: 12 months
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
 
-    // Fetch last 12 months of expenses + current month
-    const startDate = startOfMonth(subMonths(month, 12));
+    // Fetch last X months of expenses based on analysisPeriod
+    const startDate = startOfMonth(subMonths(month, analysisPeriod));
     const endDate = endOfMonth(month);
 
     const fetchData = async () => {
@@ -59,7 +60,7 @@ const ExpensePredictor = ({ month }: { month: Date }) => {
     };
 
     fetchData();
-  }, [user, month]);
+  }, [user, month, analysisPeriod]);
 
   const predictions = useMemo((): Prediction[] => {
     if (expenses.length === 0 || categories.size === 0) return [];
@@ -78,24 +79,24 @@ const ExpensePredictor = ({ month }: { month: Date }) => {
     });
 
     const currentMonthIndex = getMonth(month);
-    const previousMonths = Array.from({ length: 12 }, (_, i) => getMonth(subMonths(month, i + 1)));
+    const previousMonths = Array.from({ length: analysisPeriod }, (_, i) => getMonth(subMonths(month, i + 1)));
 
     const predictionsData: Prediction[] = [];
 
     categories.forEach((categoryName, categoryId) => {
-      // Calculate average of last 12 months
-      let totalOfLast12Months = 0;
+      // Calculate average of the selected period
+      let totalOfPeriod = 0;
       let monthsWithData = 0;
       previousMonths.forEach(mIndex => {
         if (monthlyCategoryTotals.has(mIndex) && monthlyCategoryTotals.get(mIndex)!.has(categoryId)) {
-          totalOfLast12Months += monthlyCategoryTotals.get(mIndex)!.get(categoryId)!;
+          totalOfPeriod += monthlyCategoryTotals.get(mIndex)!.get(categoryId)!;
           monthsWithData++;
         }
       });
       
       if (monthsWithData === 0) return;
 
-      const predictedAmount = Math.round(totalOfLast12Months / monthsWithData);
+      const predictedAmount = Math.round(totalOfPeriod / monthsWithData);
       const currentAmount = monthlyCategoryTotals.get(currentMonthIndex)?.get(categoryId) || 0;
 
       if (currentAmount > 0 || predictedAmount > 0) {
@@ -105,18 +106,45 @@ const ExpensePredictor = ({ month }: { month: Date }) => {
     
     return predictionsData.sort((a, b) => b.predictedAmount - a.predictedAmount);
 
-  }, [expenses, categories, month]);
+  }, [expenses, categories, month, analysisPeriod]);
 
   const totalPrediction = useMemo(() => predictions.reduce((sum, p) => sum + p.predictedAmount, 0), [predictions]);
   const totalCurrent = useMemo(() => predictions.reduce((sum, p) => sum + p.currentAmount, 0), [predictions]);
 
   if (loading) return <div className="bg-white p-6 rounded-lg shadow-md text-center">予測を計算中...</div>;
   if (error) return <div className="bg-white p-6 rounded-lg shadow-md text-center text-red-500">{error}</div>;
-  if (predictions.length === 0) return null;
+  if (predictions.length === 0 && !loading) return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+       <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-gray-800">今月の支出予測</h3>
+        <select
+          value={analysisPeriod}
+          onChange={(e) => setAnalysisPeriod(Number(e.target.value))}
+          className="p-1 border rounded-md text-sm bg-gray-50"
+        >
+          <option value={3}>過去3ヶ月平均</option>
+          <option value={6}>過去6ヶ月平均</option>
+          <option value={12}>過去12ヶ月平均</option>
+        </select>
+      </div>
+      <p className="text-center text-gray-500 py-10">予測を計算するための十分な過去のデータがありません。</p>
+    </div>
+  );
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">今月の支出予測</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-gray-800">今月の支出予測</h3>
+        <select
+          value={analysisPeriod}
+          onChange={(e) => setAnalysisPeriod(Number(e.target.value))}
+          className="p-1 border rounded-md text-sm bg-gray-50"
+        >
+          <option value={3}>過去3ヶ月平均</option>
+          <option value={6}>過去6ヶ月平均</option>
+          <option value={12}>過去12ヶ月平均</option>
+        </select>
+      </div>
       <div className="mb-6 grid grid-cols-2 text-center">
         <div>
           <p className="text-gray-600">現在の合計</p>
