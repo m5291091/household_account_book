@@ -1,13 +1,13 @@
-
+// /src/components/income/IncomeList.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, onSnapshot, deleteDoc, doc, orderBy, where, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Income } from '@/types/Income';
 import { format } from 'date-fns';
-import Link from 'next/link';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 interface IncomeListProps {
   month: Date;
@@ -21,25 +21,29 @@ const IncomeList = ({ month, onEditIncome }: IncomeListProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
 
-    const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
-    const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-
-    const incomesQuery = query(
+    const q = query(
       collection(db, 'users', user.uid, 'incomes'),
       where('date', '>=', Timestamp.fromDate(monthStart)),
-      where('date', '<=', Timestamp.fromDate(monthEnd)),
-      orderBy('date', 'desc')
+      where('date', '<=', Timestamp.fromDate(monthEnd))
     );
 
-    const unsubscribe = onSnapshot(incomesQuery, (snapshot) => {
-      setIncomes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Income)));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const incomesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Income))
+        .sort((a, b) => b.date.toMillis() - a.date.toMillis());
+      setIncomes(incomesData);
       setLoading(false);
     }, (err) => {
       console.error(err);
-      setError('収入履歴の読み込みに失敗しました。');
+      setError('収入データの読み込みに失敗しました。');
       setLoading(false);
     });
 
@@ -47,35 +51,55 @@ const IncomeList = ({ month, onEditIncome }: IncomeListProps) => {
   }, [user, month]);
 
   const handleDelete = async (id: string) => {
-    if (!user || !confirm('この収入を削除しますか？')) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'incomes', id));
-    } catch (err) {
-      console.error(err);
-      setError('収入の削除に失敗しました。');
+    if (confirm('この収入履歴を削除してもよろしいですか？')) {
+      try {
+        if (!user) return;
+        await deleteDoc(doc(db, 'users', user.uid, 'incomes', id));
+      } catch (err) {
+        console.error(err);
+        alert('削除に失敗しました。');
+      }
     }
   };
 
-  if (loading) return <p>収入履歴を読み込んでいます...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (loading) return <p className="text-center">読み込み中...</p>;
+  if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">収入履歴</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">収入一覧</h2>
       {incomes.length === 0 ? (
-        <p>この月の収入はありません。</p>
+        <p className="text-gray-500">この月の収入データはありません。</p>
       ) : (
-        <ul className="divide-y divide-gray-200">
+        <ul className="space-y-4">
           {incomes.map(income => (
-            <li key={income.id} className="py-4 flex justify-between items-center">
-              <div>
-                <p className="font-semibold">{format(income.date.toDate(), 'M月d日')} - {income.source}</p>
-                <p className="text-xl font-bold">¥{income.amount.toLocaleString()}</p>
-                {income.memo && <p className="text-sm text-gray-500 mt-1">メモ: {income.memo}</p>}
+            <li key={income.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm text-gray-500">{format(income.date.toDate(), 'yyyy/MM/dd')}</p>
+                  <p className="font-semibold text-lg">{income.source} ({income.category})</p>
+                  {income.memo && <p className="text-sm text-gray-600 mt-1">{income.memo}</p>}
+                </div>
+                <div className="text-right flex-shrink-0 ml-4">
+                  <p className="font-bold text-xl text-green-600">¥{income.amount.toLocaleString()}</p>
+                  {income.totalTaxableAmount && (
+                    <p className="text-sm text-gray-500">課税合計: ¥{income.totalTaxableAmount.toLocaleString()}</p>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                 <Link href={`/dashboard/edit-income/${income.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">編集</Link>
-                 <button onClick={() => handleDelete(income.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">削除</button>
+              <div className="text-right mt-2 space-x-2">
+                <button
+                  onClick={() => onEditIncome(income)}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => handleDelete(income.id)}
+                  className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  削除
+                </button>
               </div>
             </li>
           ))}
