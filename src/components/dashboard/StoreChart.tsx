@@ -17,24 +17,20 @@ interface StoreData {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const totalSum = payload[0].payload.totalSum; // Assuming totalSum is passed in payload
-    const percent = totalSum > 0 ? (data.total / totalSum) * 100 : 0;
-    
-    return (
-      <div className="bg-white p-2 border border-gray-300 rounded shadow-lg">
-        <p className="font-bold">{data.name}</p>
-        <p>合計: ¥{data.total.toLocaleString()}</p>
-        <p>割合: {percent.toFixed(2)}%</p>
-      </div>
-    );
-  }
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-  return null;
+  if (percent < 0.05) return null;
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
 };
-
 
 const StoreChart = ({ month }: StoreChartProps) => {
   const { user } = useAuth();
@@ -87,11 +83,6 @@ const StoreChart = ({ month }: StoreChartProps) => {
     return { storeData: data, totalSum: sum };
   }, [expenses]);
 
-  const pieData = useMemo(() => {
-    return storeData.map(item => ({ ...item, totalSum }));
-  }, [storeData, totalSum]);
-
-
   if (loading) return <p>グラフを読み込んでいます...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
   if (storeData.length === 0) return (
@@ -119,23 +110,25 @@ const StoreChart = ({ month }: StoreChartProps) => {
         </div>
         <div>
           <h4 className="text-md font-semibold text-center mb-4">支出割合</h4>
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={500}>
             <PieChart>
-              <Tooltip content={<CustomTooltip />} />
               <Pie
-                data={pieData}
+                data={storeData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={80}
+                labelLine={false}
+                label={renderCustomizedLabel}
+                outerRadius={180}
                 fill="#8884d8"
                 dataKey="total"
-                paddingAngle={5}
+                nameKey="name"
               >
                 {storeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
+              <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>

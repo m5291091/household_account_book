@@ -87,7 +87,7 @@ const DashboardCharts = ({ month }: { month: Date }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-4 text-gray-800">カテゴリー別支出</h2>
-      <div style={{ width: '100%', height: 300 }}>
+      <div style={{ width: '100%', height: 500 }}>
         {categoryData.length > 0 ? (
           <ResponsiveContainer>
             <PieChart>
@@ -97,7 +97,7 @@ const DashboardCharts = ({ month }: { month: Date }) => {
                 cy="50%"
                 labelLine={false}
                 label={renderCustomizedLabel}
-                outerRadius={100}
+                outerRadius={180}
                 fill="#8884d8"
                 dataKey="value"
                 nameKey="name"
