@@ -1,6 +1,6 @@
 "use client";
 
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 
 interface MonthlyData {
   name: string;
@@ -15,15 +15,28 @@ interface MonthlyDataTableProps {
 }
 
 const MonthlyDataTable: FC<MonthlyDataTableProps> = ({ title, data, columns, fileName }) => {
-  
+
+  const totals = useMemo(() => {
+    const totalsRow: MonthlyData = { name: '合計' };
+    columns.slice(1).forEach(col => {
+      totalsRow[col.key] = data.reduce((sum, row) => sum + (Number(row[col.key]) || 0), 0);
+    });
+    return totalsRow;
+  }, [data, columns]);
+
   const handleDownload = () => {
-    const headers = [columns[0].label, ...columns.slice(1).map(c => c.label)];
+    const headers = columns.map(c => c.label);
     const csvRows = [headers.join(',')];
 
     for (const row of data) {
       const values = columns.map(col => row[col.key]);
       csvRows.push(values.join(','));
     }
+    
+    // Add totals row to CSV
+    const totalValues = columns.map(col => totals[col.key]);
+    csvRows.push(totalValues.join(','));
+
 
     const csvString = csvRows.join('\n');
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
@@ -71,6 +84,15 @@ const MonthlyDataTable: FC<MonthlyDataTableProps> = ({ title, data, columns, fil
               </tr>
             ))}
           </tbody>
+          <tfoot className="bg-gray-50">
+            <tr>
+              {columns.map(col => (
+                <th key={col.key} scope="row" className="px-6 py-3 text-left text-sm font-bold text-gray-700">
+                  {typeof totals[col.key] === 'number' ? (totals[col.key] as number).toLocaleString() : totals[col.key]}
+                </th>
+              ))}
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

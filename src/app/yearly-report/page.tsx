@@ -113,7 +113,7 @@ const YearlyReportPage = () => {
 
   const monthlyData = useMemo(() => {
     const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-    const data = monthNames.map(name => ({ name, "支出": 0, "差引支給額": 0, "課税合計": 0 }));
+    const data = monthNames.map(name => ({ name, "支出": 0, "差引支給額": 0 }));
 
     expenses.forEach(exp => {
       const month = getMonth(exp.date.toDate());
@@ -122,10 +122,28 @@ const YearlyReportPage = () => {
     incomes.forEach(inc => {
       const month = getMonth(inc.date.toDate());
       data[month]["差引支給額"] += inc.amount;
-      data[month]["課税合計"] += inc.totalTaxableAmount || 0;
     });
     return data;
   }, [expenses, incomes]);
+
+  const monthlyIncomeByCategoryData = useMemo(() => {
+    const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    const categoryMap = new Map<string, { name: string; "差引支給額": number; "課税合計": number; }[]>();
+
+    incomes.forEach(inc => {
+      const category = inc.category || '未分類';
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, monthNames.map(name => ({ name, "差引支給額": 0, "課税合計": 0 })));
+      }
+      
+      const monthData = categoryMap.get(category)!;
+      const monthIndex = getMonth(inc.date.toDate());
+      monthData[monthIndex]["差引支給額"] += inc.amount;
+      monthData[monthIndex]["課税合計"] += inc.totalTaxableAmount || 0;
+    });
+
+    return Array.from(categoryMap.entries());
+  }, [incomes]);
 
   const expenseByCategory = useMemo(() => {
     const dataMap = new Map<string, number>();
@@ -268,39 +286,47 @@ const YearlyReportPage = () => {
       </div>
       
       {/* --- Monthly Income Breakdown --- */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">月別収入内訳の推移</h2>
-        <div style={{ width: '100%', height: 400 }}>
-          <ResponsiveContainer>
-            <LineChart data={monthlyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={(value) => `¥${(value as number / 10000).toLocaleString()}万`} />
-              <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
-              <Legend />
-              <Line type="monotone" dataKey="差引支給額" stroke="#22c55e" strokeWidth={2} />
-              <Line type="monotone" dataKey="課税合計" stroke="#f59e0b" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <MonthlyDataTable
-          title="月別収入内訳データ"
-          data={monthlyData}
-          columns={[
-            { key: 'name', label: '月' },
-            { key: '差引支給額', label: '差引支給額 (円)' },
-            { key: '課税合計', label: '課税合計 (円)' },
-          ]}
-          fileName={`${selectedYear}年_月別収入内訳`}
-        />
+      <div className="space-y-8">
+        <h2 className="text-3xl font-bold text-gray-800 mt-12 border-b pb-2">月別収入内訳の推移</h2>
+        {monthlyIncomeByCategoryData.map(([category, data]) => (
+          <div key={category} className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-2xl font-bold mb-4 text-gray-700">{category}</h3>
+            <div style={{ width: '100%', height: 400 }}>
+              <ResponsiveContainer>
+                <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => `¥${(value as number / 10000).toLocaleString()}万`} />
+                  <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="差引支給額" stroke="#22c55e" strokeWidth={2} />
+                  <Line type="monotone" dataKey="課税合計" stroke="#f59e0b" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <MonthlyDataTable
+              title={`${category} - データ詳細`}
+              data={data}
+              columns={[
+                { key: 'name', label: '月' },
+                { key: '差引支給額', label: '差引支給額 (円)' },
+                { key: '課税合計', label: '課税合計 (円)' },
+              ]}
+              fileName={`${selectedYear}年_${category}_月別収入内訳`}
+            />
+          </div>
+        ))}
       </div>
 
       {/* --- Pie Chart Grid --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {renderPieChart('カテゴリー別年間合計支出', expenseByCategory)}
-        {renderPieChart('収入のカテゴリー別年間合計', incomeByCategory)}
-        {renderPieChart('支払い方法別年間支出', expenseByPaymentMethod)}
-        {renderPieChart('店名・サービスでの年間合計支出', expenseByStore)}
+      <div className="mt-12">
+        <h2 className="text-3xl font-bold text-gray-800 border-b pb-2 mb-8">年間サマリー</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {renderPieChart('カテゴリー別年間合計支出', expenseByCategory)}
+          {renderPieChart('収入のカテゴリー別年間合計', incomeByCategory)}
+          {renderPieChart('支払い方法別年間支出', expenseByPaymentMethod)}
+          {renderPieChart('店名・サービスでの年間合計支出', expenseByStore)}
+        </div>
       </div>
     </div>
   );
