@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, doc, updateDoc, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ interface IncomeFormProps {
   onFormClose?: () => void;
 }
 
-const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
+const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, ref) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     source: '',
@@ -25,6 +25,13 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
   const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollIntoView: () => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }));
 
   const isEditMode = !!incomeToEdit;
 
@@ -37,6 +44,8 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
       category: '',
       memo: '',
     });
+    setSuccess(null);
+    setError(null);
   };
 
   useEffect(() => {
@@ -59,7 +68,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
     const q = query(collection(db, 'users', user.uid, 'incomeCategories'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedCategories = snapshot.docs.map(doc => doc.data().name as string);
-      setCategories(Array.from(new Set(fetchedCategories))); // Unique categories
+      setCategories(Array.from(new Set(fetchedCategories)));
     });
     return () => unsubscribe();
   }, [user]);
@@ -109,7 +118,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div ref={formRef} className="bg-white p-6 rounded-lg shadow-md scroll-mt-8">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditMode ? '収入を編集' : '収入を記録'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -154,6 +163,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
       </form>
     </div>
   );
-};
+});
 
+IncomeForm.displayName = 'IncomeForm';
 export default IncomeForm;

@@ -29,6 +29,7 @@ const DashboardPage = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [copiedExpenseData, setCopiedExpenseData] = useState<Partial<ExpenseFormData> | null>(null);
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
+  const incomeFormRef = useRef<{ scrollIntoView: () => void }>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,12 +53,12 @@ const DashboardPage = () => {
 
   const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
     setCopiedExpenseData(data);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    incomeFormRef.current?.scrollIntoView();
   };
 
   const handleEditIncome = (income: Income) => {
     setIncomeToEdit(income);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    incomeFormRef.current?.scrollIntoView();
   };
 
   const handleCloseIncomeForm = () => {
@@ -119,8 +120,9 @@ const DashboardPage = () => {
                 onEditExpense={() => {}}
                 onCopyExpense={handleCopyExpense}
               />
-              <IncomeForm incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
-              <IncomeList month={currentMonth} onEditIncome={handleEditIncome} />
+              <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
+              <IncomeList onEditIncome={handleEditIncome} />
+            </div>
             </div>
           </div>
         </div>
