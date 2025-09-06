@@ -136,6 +136,7 @@ const IncomeForm = ({ incomeToEdit, onFormClose }: IncomeFormProps) => {
       </form>
     </div>
   );
+};
 
 
 export default IncomeForm;
