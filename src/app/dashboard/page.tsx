@@ -21,6 +21,7 @@ import IncomeForm from '@/components/income/IncomeForm';
 import IncomeList from '@/components/income/IncomeList';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
+import ExpensePredictor from '@/components/dashboard/ExpensePredictor';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -89,6 +90,7 @@ const DashboardPage = () => {
             {/* Left Column for Analysis */}
             <div className="space-y-8">
               <DashboardSummary month={currentMonth} />
+              <ExpensePredictor month={currentMonth} />
               <IncomeExpenseChart month={currentMonth} />
               <IncomeCategoryChart startDate={startDate} endDate={endDate} />
               <BudgetStatus month={currentMonth} />
@@ -116,5 +118,6 @@ const DashboardPage = () => {
     </div>
   );
 };
+
 
 export default DashboardPage;
