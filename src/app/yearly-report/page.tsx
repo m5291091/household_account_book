@@ -13,6 +13,7 @@ import {
 import { Expense } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import { PaymentMethod } from '@/types/PaymentMethod';
+import MonthlyDataTable from '@/components/dashboard/MonthlyDataTable';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff', '#ff8c00', '#9932cc', '#20b2aa', '#d2691e'];
 
@@ -254,6 +255,16 @@ const YearlyReportPage = () => {
             </LineChart>
           </ResponsiveContainer>
         </div>
+        <MonthlyDataTable
+          title="月別収支データ"
+          data={monthlyData}
+          columns={[
+            { key: 'name', label: '月' },
+            { key: '支出', label: '支出 (円)' },
+            { key: '差引支給額', label: '差引支給額 (円)' },
+          ]}
+          fileName={`${selectedYear}年_月別収支`}
+        />
       </div>
       
       {/* --- Monthly Income Breakdown --- */}
@@ -272,6 +283,16 @@ const YearlyReportPage = () => {
             </LineChart>
           </ResponsiveContainer>
         </div>
+        <MonthlyDataTable
+          title="月別収入内訳データ"
+          data={monthlyData}
+          columns={[
+            { key: 'name', label: '月' },
+            { key: '差引支給額', label: '差引支給額 (円)' },
+            { key: '課税合計', label: '課税合計 (円)' },
+          ]}
+          fileName={`${selectedYear}年_月別収入内訳`}
+        />
       </div>
 
       {/* --- Pie Chart Grid --- */}

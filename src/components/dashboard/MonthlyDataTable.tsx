@@ -1,0 +1,80 @@
+"use client";
+
+import { FC } from 'react';
+
+interface MonthlyData {
+  name: string;
+  [key: string]: number | string;
+}
+
+interface MonthlyDataTableProps {
+  title: string;
+  data: MonthlyData[];
+  columns: { key: string; label: string }[];
+  fileName: string;
+}
+
+const MonthlyDataTable: FC<MonthlyDataTableProps> = ({ title, data, columns, fileName }) => {
+  
+  const handleDownload = () => {
+    const headers = [columns[0].label, ...columns.slice(1).map(c => c.label)];
+    const csvRows = [headers.join(',')];
+
+    for (const row of data) {
+      const values = columns.map(col => row[col.key]);
+      csvRows.push(values.join(','));
+    }
+
+    const csvString = csvRows.join('\n');
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-lg font-semibold">{title}</h4>
+        <button
+          onClick={handleDownload}
+          className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          CSVダウンロード
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map(col => (
+                <th key={col.key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {data.map((row, index) => (
+              <tr key={index}>
+                {columns.map(col => (
+                  <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {typeof row[col.key] === 'number' ? (row[col.key] as number).toLocaleString() : row[col.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default MonthlyDataTable;
