@@ -123,7 +123,6 @@ const DashboardPage = () => {
               <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
               <IncomeList onEditIncome={handleEditIncome} />
             </div>
-            </div>
           </div>
         </div>
       </main>
