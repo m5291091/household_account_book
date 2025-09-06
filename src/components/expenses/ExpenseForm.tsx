@@ -9,6 +9,8 @@ import { PaymentMethod } from '@/types/PaymentMethod';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { format } from 'date-fns';
 
+import { useCategorySuggestion } from '@/hooks/useCategorySuggestion';
+
 interface ExpenseFormProps {
   expenseToEdit?: Expense | null;
   onFormClose?: () => void;
@@ -18,6 +20,7 @@ interface ExpenseFormProps {
 
 const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }: ExpenseFormProps) => {
   const { user, loading: authLoading } = useAuth();
+  const { suggestionMap } = useCategorySuggestion();
   const [formData, setFormData] = useState<Omit<ExpenseFormData, 'isIrregular'>>({
     date: new Date().toISOString().split('T')[0],
     amount: '',
@@ -92,6 +95,17 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
       unsubscribePaymentMethods();
     };
   }, [user, authLoading]);
+
+  // Handle category suggestion
+  useEffect(() => {
+    if (formData.store && !formData.categoryId) { // Only suggest if category is not already set
+      const storeKey = formData.store.trim().toLowerCase();
+      const suggestedCategoryId = suggestionMap.get(storeKey);
+      if (suggestedCategoryId) {
+        setFormData(prev => ({ ...prev, categoryId: suggestedCategoryId }));
+      }
+    }
+  }, [formData.store, suggestionMap]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
