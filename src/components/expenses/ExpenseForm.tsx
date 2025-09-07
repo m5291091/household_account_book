@@ -119,11 +119,11 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>) => {
+    const target = e.target as HTMLElement;
+
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      const target = e.target as HTMLElement;
-      
       switch (target.id) {
         case 'date':
           amountRef.current?.focus();
@@ -142,6 +142,30 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           break;
         case 'memo':
           submitButtonRef.current?.focus();
+          break;
+        default:
+          break;
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      switch (target.id) {
+        case 'amount':
+          dateRef.current?.focus();
+          break;
+        case 'store':
+          amountRef.current?.focus();
+          break;
+        case 'categoryId':
+          storeRef.current?.focus();
+          break;
+        case 'paymentMethodId':
+          categoryRef.current?.focus();
+          break;
+        case 'memo':
+          paymentMethodRef.current?.focus();
+          break;
+        case 'submitButton':
+          memoRef.current?.focus();
           break;
         default:
           break;
@@ -244,7 +268,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
         <div className="flex items-center space-x-4">
-          <button ref={submitButtonRef} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button ref={submitButtonRef} type="submit" id="submitButton" onKeyDown={handleKeyDown} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             {isEditMode ? '更新する' : '記録する'}
           </button>
           {isEditMode && onFormClose && (
