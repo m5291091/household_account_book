@@ -123,28 +123,30 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     const target = e.target as HTMLElement;
 
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      switch (target.id) {
-        case 'date':
-          amountRef.current?.focus();
-          break;
-        case 'amount':
-          storeRef.current?.focus();
-          break;
-        case 'store':
-          categoryRef.current?.focus();
-          break;
-        case 'categoryId':
-          paymentMethodRef.current?.focus();
-          break;
-        case 'paymentMethodId':
-          memoRef.current?.focus();
-          break;
-        case 'memo':
-          submitButtonRef.current?.focus();
-          break;
-        default:
-          break;
+      if (target.id !== 'submitButton') {
+        e.preventDefault();
+        switch (target.id) {
+          case 'date':
+            amountRef.current?.focus();
+            break;
+          case 'amount':
+            storeRef.current?.focus();
+            break;
+          case 'store':
+            categoryRef.current?.focus();
+            break;
+          case 'categoryId':
+            paymentMethodRef.current?.focus();
+            break;
+          case 'paymentMethodId':
+            memoRef.current?.focus();
+            break;
+          case 'memo':
+            submitButtonRef.current?.focus();
+            break;
+          default:
+            break;
+        }
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
