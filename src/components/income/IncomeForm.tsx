@@ -169,13 +169,14 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
       } else {
         await addDoc(collection(db, 'users', user.uid, 'incomes'), dataToSave);
         setSuccess('収入を記録しました。');
+        resetForm();
+        setTimeout(() => {
+          dateRef.current?.focus();
+        }, 0);
       }
 
       if (onFormClose) {
         onFormClose();
-      } else {
-        resetForm();
-        dateRef.current?.focus();
       }
     } catch (err) {
       console.error(err);
