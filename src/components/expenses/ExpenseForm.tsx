@@ -186,6 +186,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         onFormClose();
       } else {
         resetForm();
+        dateRef.current?.focus();
       }
     } catch (err) {
       console.error(err);
