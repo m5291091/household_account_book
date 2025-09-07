@@ -28,6 +28,8 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
   
   // Refs for focus management
   const formRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const sourceRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const taxRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
@@ -84,23 +86,55 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>) => {
+    const target = e.target as HTMLElement;
+
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      if (target.id !== 'submitButton') {
+        e.preventDefault();
+        switch (target.id) {
+          case 'date':
+            sourceRef.current?.focus();
+            break;
+          case 'source':
+            amountRef.current?.focus();
+            break;
+          case 'amount':
+            taxRef.current?.focus();
+            break;
+          case 'totalTaxableAmount':
+            categoryRef.current?.focus();
+            break;
+          case 'category':
+            memoRef.current?.focus();
+            break;
+          case 'memo':
+            submitButtonRef.current?.focus();
+            break;
+          default:
+            break;
+        }
+      }
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const target = e.target as HTMLElement;
-      
       switch (target.id) {
+        case 'source':
+          dateRef.current?.focus();
+          break;
         case 'amount':
-          taxRef.current?.focus();
+          sourceRef.current?.focus();
           break;
         case 'totalTaxableAmount':
-          categoryRef.current?.focus();
+          amountRef.current?.focus();
           break;
         case 'category':
-          memoRef.current?.focus();
+          taxRef.current?.focus();
           break;
         case 'memo':
-          submitButtonRef.current?.focus();
+          categoryRef.current?.focus();
+          break;
+        case 'submitButton':
+          memoRef.current?.focus();
           break;
         default:
           break;
@@ -141,6 +175,7 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
         onFormClose();
       } else {
         resetForm();
+        dateRef.current?.focus();
       }
     } catch (err) {
       console.error(err);
@@ -154,11 +189,11 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="date" className="block text-sm font-medium text-gray-700">日付</label>
-          <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
           <label htmlFor="source" className="block text-sm font-medium text-gray-700">収入源</label>
-          <input type="text" name="source" id="source" value={formData.source} onChange={handleChange} placeholder="給与、ボーナスなど" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <input ref={sourceRef} type="text" name="source" id="source" value={formData.source} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="給与、ボーナスなど" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700">差引支給額</label>
@@ -182,7 +217,7 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
         <div className="flex items-center space-x-4">
-          <button ref={submitButtonRef} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button ref={submitButtonRef} type="submit" id="submitButton" onKeyDown={handleKeyDown} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             {isEditMode ? '更新する' : '記録する'}
           </button>
           {isEditMode && onFormClose && (
