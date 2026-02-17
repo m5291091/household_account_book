@@ -3,6 +3,7 @@
 
 import { useIncomeByCategory } from '@/hooks/useIncomeByCategory';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 // HSLカラーを生成する関数
 const generateHslColor = (index: number, total: number) => {
@@ -10,7 +11,9 @@ const generateHslColor = (index: number, total: number) => {
   return `hsl(${hue}, 70%, 50%)`;
 };
 
-const IncomeCategoryChart = ({ startDate, endDate }: { startDate: Date, endDate: Date }) => {
+const IncomeCategoryChart = ({ month }: { month: Date }) => {
+  const startDate = startOfMonth(month);
+  const endDate = endOfMonth(month);
   const { data, loading, error } = useIncomeByCategory(startDate, endDate);
 
   if (loading) return <div className="text-center p-4">読み込み中...</div>;
