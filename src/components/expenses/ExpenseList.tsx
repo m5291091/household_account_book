@@ -35,7 +35,6 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '' });
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // New features state
@@ -363,14 +362,19 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     }
   };
 
+  const calendarStart = startOfWeek(startOfMonth(month));
+  const calendarEnd = endOfWeek(endOfMonth(month));
+  const calendarDays = [];
+  let dayIter = calendarStart;
+  while (dayIter <= calendarEnd) {
+    calendarDays.push(dayIter);
+    dayIter = addDays(dayIter, 1);
+  }
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">支出履歴</h2>
-        <div className="flex space-x-2">
-          <button onClick={() => setViewMode('calendar')} className={`px-3 py-1 text-sm font-medium rounded-md ${viewMode === 'calendar' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>カレンダー</button>
-          <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-sm font-medium rounded-md ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>リスト</button>
-        </div>
       </div>
 
       {viewMode === 'list' && (
@@ -458,6 +462,37 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
             </table>
           </div>
         </>
+      )}
+
+      {viewMode === 'monthly_grid' && (
+        <div className="grid grid-cols-7 border-t border-l border-gray-300">
+          {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
+             <div key={d} className={`p-2 border-r border-b border-gray-300 font-bold text-center bg-gray-100 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>{d}</div>
+          ))}
+          {calendarDays.map((date, i) => {
+             const dailyExpenses = allMonthExpenses.filter(e => isSameDay(e.date.toDate(), date));
+             const total = dailyExpenses.reduce((sum, e) => sum + e.amount, 0);
+             const isCurrentMonth = isSameMonth(date, month);
+             return (
+               <div 
+                 key={i} 
+                 className={`p-2 border-r border-b border-gray-300 min-h-[100px] hover:bg-gray-50 cursor-pointer transition-colors ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : ''}`} 
+                 onClick={(e) => handleCellClick(e, dailyExpenses, format(date, 'M月d日の支出'))}
+               >
+                 <div className={`text-right ${format(date, 'E', { locale: ja }) === '日' ? 'text-red-500' : format(date, 'E', { locale: ja }) === '土' ? 'text-blue-500' : ''}`}>
+                   {format(date, 'd')}
+                 </div>
+                 {total > 0 && <div className="text-sm font-bold text-red-600 mt-2 text-right">¥{total.toLocaleString()}</div>}
+                 <div className="mt-1 space-y-1">
+                   {dailyExpenses.slice(0, 3).map(exp => (
+                     <div key={exp.id} className="text-xs truncate text-gray-600 bg-gray-100 rounded px-1">{exp.store || '支出'}</div>
+                   ))}
+                   {dailyExpenses.length > 3 && <div className="text-xs text-gray-400 text-center">他{dailyExpenses.length - 3}件</div>}
+                 </div>
+               </div>
+             );
+          })}
+        </div>
       )}
 
       {viewMode === 'calendar' && (

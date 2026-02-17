@@ -6,11 +6,13 @@ import { useEffect, useState } from 'react';
 import ExpenseList from '@/components/expenses/ExpenseList';
 import RegularPaymentProcessor from '@/components/expenses/RegularPaymentProcessor';
 import { format, addMonths, subMonths } from 'date-fns';
+import CalendarViewSettings from '@/components/calendar/CalendarViewSettings';
 
 const CalendarPage = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'monthly_grid'>('calendar');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -29,7 +31,10 @@ const CalendarPage = () => {
     <div className="">
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold mb-8 text-gray-900">カレンダー</h1>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900">カレンダー</h1>
+            <CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />
+          </div>
 
           {/* Month Navigation */}
           <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow-md">
@@ -55,6 +60,7 @@ const CalendarPage = () => {
                   console.log('Copy feature to be implemented', data);
                   alert("コピー機能は現在調整中です。");
                 }}
+                viewMode={viewMode}
               />
             </div>
           </div>
