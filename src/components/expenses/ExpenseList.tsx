@@ -46,6 +46,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
   // Filtering and Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -145,14 +146,15 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
       const searchMatch = !searchQuery || storeMatch || memoMatch;
 
       const paymentMethodMatch = !selectedPaymentMethod || expense.paymentMethodId === selectedPaymentMethod;
+      const categoryMatch = !selectedCategory || expense.categoryId === selectedCategory;
 
       const expenseDate = expense.date.toDate();
       const startMatch = !startDate || expenseDate >= parseISO(startDate);
       const endMatch = !endDate || expenseDate <= parseISO(`${endDate}T23:59:59`);
       
-      return searchMatch && paymentMethodMatch && startMatch && endMatch;
+      return searchMatch && paymentMethodMatch && categoryMatch && startMatch && endMatch;
     });
-  }, [allMonthExpenses, searchQuery, selectedPaymentMethod, startDate, endDate]);
+  }, [allMonthExpenses, searchQuery, selectedPaymentMethod, selectedCategory, startDate, endDate]);
 
   const regularExpenses = useMemo(() => filteredExpenses.filter(exp => !exp.isIrregular), [filteredExpenses]);
   const irregularExpenses = useMemo(() => filteredExpenses.filter(exp => exp.isIrregular), [filteredExpenses]);
@@ -397,10 +399,16 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
               onChange={e => setSearchQuery(e.target.value)}
               className="p-2 border border-gray-300 rounded-md md:col-span-2"
             />
-            <select value={selectedPaymentMethod} onChange={e => setSelectedPaymentMethod(e.target.value)} className="p-2 border border-gray-300 rounded-md">
-              <option value="">すべての支払方法</option>
-              {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <select value={selectedPaymentMethod} onChange={e => setSelectedPaymentMethod(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full">
+                <option value="">すべての支払方法</option>
+                {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
+              </select>
+              <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full">
+                <option value="">すべてのカテゴリー</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             <div className="flex items-center space-x-2">
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full"/>
               <span>-</span>
