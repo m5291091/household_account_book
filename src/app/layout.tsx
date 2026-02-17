@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Header from "@/components/layout/Header";
+import ShortcutProvider from "@/components/providers/ShortcutProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,10 +22,12 @@ export default function RootLayout({
     <html lang="ja">
       <body className={`${inter.className} min-h-screen bg-gray-50 flex flex-col`}>
         <AuthProvider>
-          <Header />
-          <div className="w-full max-w-screen-2xl mx-auto p-4 md:p-8 lg:p-12 flex-grow">
-            {children}
-          </div>
+          <ShortcutProvider>
+            <Header />
+            <div className="w-full max-w-screen-2xl mx-auto p-4 md:p-8 lg:p-12 flex-grow">
+              {children}
+            </div>
+          </ShortcutProvider>
         </AuthProvider>
       </body>
     </html>

@@ -55,6 +55,12 @@ const SettingsPage = () => {
       href: '/settings/display',
       icon: '🎨',
     },
+    {
+      title: 'ショートカット設定',
+      description: 'アプリ内のキーボードショートカットを設定します。',
+      href: '/settings/shortcuts',
+      icon: '⌨️',
+    },
   ];
 
   return (
