@@ -8,8 +8,8 @@ const Header = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'ダッシュボード', href: '/dashboard' },
     { name: '支出記録', href: '/transactions/expense' },
+    { name: 'ダッシュボード', href: '/dashboard' },
     { name: '収入管理', href: '/transactions/income' },
     { name: 'カレンダー・履歴', href: '/calendar' },
     { name: '年間レポート', href: '/yearly-report' },
@@ -21,7 +21,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div className="flex items-center">
-            <Link href="/dashboard" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition duration-150">
+            <Link href="/transactions/expense" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition duration-150">
               家計簿アプリ
             </Link>
           </div>
