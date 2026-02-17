@@ -15,6 +15,7 @@ export interface Account {
   // Credit Card specific
   closingDay?: number; // 締め日 (1-31, 99 for end of month)
   paymentDay?: number; // 引き落とし日
+  paymentMonthOffset?: number; // 0:当月, 1:翌月, 2:翌々月
   linkedBankAccountId?: string; // 引き落とし口座
 
   updatedAt: Timestamp;
@@ -26,5 +27,6 @@ export interface AccountFormData {
   balance: string;
   closingDay: string;
   paymentDay: string;
+  paymentMonthOffset: string;
   linkedBankAccountId: string;
 }

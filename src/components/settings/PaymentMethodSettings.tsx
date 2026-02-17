@@ -24,6 +24,7 @@ const PaymentMethodSettings = () => {
     balance: '',
     closingDay: '',
     paymentDay: '',
+    paymentMonthOffset: '1',
     linkedBankAccountId: '',
   });
   const [isEditingAccount, setIsEditingAccount] = useState<string | null>(null);
@@ -67,6 +68,7 @@ const PaymentMethodSettings = () => {
       balance: '',
       closingDay: '',
       paymentDay: '',
+      paymentMonthOffset: '1',
       linkedBankAccountId: '',
     });
     setIsEditingAccount(null);
@@ -94,6 +96,7 @@ const PaymentMethodSettings = () => {
         balance: accountForm.type === 'credit_card' ? 0 : Number(accountForm.balance), // Default 0 balance/usage for CC if not set
         closingDay: accountForm.type === 'credit_card' ? Number(accountForm.closingDay) || null : null,
         paymentDay: accountForm.type === 'credit_card' ? Number(accountForm.paymentDay) || null : null,
+        paymentMonthOffset: accountForm.type === 'credit_card' ? Number(accountForm.paymentMonthOffset) || 1 : null,
         linkedBankAccountId: accountForm.type === 'credit_card' ? accountForm.linkedBankAccountId || null : null,
         updatedAt: Timestamp.now(),
       };
@@ -117,6 +120,7 @@ const PaymentMethodSettings = () => {
       balance: account.balance.toString(),
       closingDay: account.closingDay?.toString() || '',
       paymentDay: account.paymentDay?.toString() || '',
+      paymentMonthOffset: account.paymentMonthOffset?.toString() || '1',
       linkedBankAccountId: account.linkedBankAccountId || '',
     });
     setIsEditingAccount(account.id);
@@ -201,13 +205,21 @@ const PaymentMethodSettings = () => {
           </div>
 
           {accountForm.type === 'credit_card' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 pt-6 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 border-t-2 pt-6 mt-4">
               <div>
                 <label className="block text-base font-bold text-gray-700 mb-2">締め日</label>
                 <select name="closingDay" value={accountForm.closingDay} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
                   <option value="">選択</option>
                   {[...Array(28)].map((_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
                   <option value="99">末日</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-base font-bold text-gray-700 mb-2">引き落とし月</label>
+                <select name="paymentMonthOffset" value={accountForm.paymentMonthOffset} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+                  <option value="0">当月</option>
+                  <option value="1">翌月</option>
+                  <option value="2">翌々月</option>
                 </select>
               </div>
               <div>
