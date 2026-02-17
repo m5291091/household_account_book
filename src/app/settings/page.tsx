@@ -61,6 +61,12 @@ const SettingsPage = () => {
       href: '/settings/shortcuts',
       icon: '⌨️',
     },
+    {
+      title: 'セキュリティ設定',
+      description: 'アプリのロックやパスワード設定を行います。',
+      href: '/settings/security',
+      icon: '🔒',
+    },
   ];
 
   return (
