@@ -9,7 +9,7 @@ import CategorySettings from '@/components/settings/CategorySettings';
 import PaymentMethodSettings from '@/components/settings/PaymentMethodSettings';
 import RegularPaymentSettings from '@/components/settings/RegularPaymentSettings';
 import IncomeCategorySettings from '@/components/settings/IncomeCategorySettings';
-import Link from 'next/link';
+import Header from '@/components/layout/Header';
 
 const SettingsPage = () => {
   const { user, loading } = useAuth();
@@ -31,23 +31,7 @@ const SettingsPage = () => {
 
   return (
     <div className="">
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">設定</h1>
-          <nav className="flex items-center space-x-4">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-              ダッシュボード
-            </Link>
-            <Link href="/transactions" className="text-gray-600 hover:text-gray-900">
-              記録・編集
-            </Link>
-            <Link href="/yearly-report" className="text-gray-600 hover:text-gray-900">
-              年間レポート
-            </Link>
-            <LogoutButton />
-          </nav>
-        </div>
-      </header>
+      <Header />
       <main className="pt-8 pb-32">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-8">

@@ -7,8 +7,7 @@ import { ExpenseFormData } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import IncomeForm from '@/components/income/IncomeForm';
 import IncomeList from '@/components/income/IncomeList';
-import Link from 'next/link';
-import LogoutButton from '@/components/auth/LogoutButton';
+import Header from '@/components/layout/Header';
 
 const TransactionsPage = () => {
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
@@ -26,39 +25,12 @@ const TransactionsPage = () => {
 
   return (
     <div className="">
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            記録・編集
-          </h1>
-          <nav className="flex items-center space-x-4">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-              ダッシュボード
-            </Link>
-            <Link href="/yearly-report" className="text-gray-600 hover:text-gray-900">
-              年間レポート
-            </Link>
-            <Link href="/settings" className="text-gray-600 hover:text-gray-900">
-              設定
-            </Link>
-            <LogoutButton />
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
-              <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                <h2 className="text-xl font-bold mb-4">支出を記録</h2>
-                <Link 
-                  href="/transactions/expense" 
-                  className="inline-block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition duration-200"
-                >
-                  支出記録画面へ移動
-                </Link>
-              </div>
               <RegularPaymentProcessor month={currentMonth} />
               <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
             </div>

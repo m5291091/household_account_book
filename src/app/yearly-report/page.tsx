@@ -14,8 +14,7 @@ import { Expense } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import MonthlyDataTable from '@/components/dashboard/MonthlyDataTable';
-import Link from 'next/link';
-import LogoutButton from '@/components/auth/LogoutButton';
+import Header from '@/components/layout/Header';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff', '#ff8c00', '#9932cc', '#20b2aa', '#d2691e'];
 
@@ -226,25 +225,7 @@ const YearlyReportPage = () => {
 
   return (
     <div className="">
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            年間レポート
-          </h1>
-          <nav className="flex items-center space-x-4">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-              ダッシュボード
-            </Link>
-            <Link href="/transactions" className="text-gray-600 hover:text-gray-900">
-              記録・編集
-            </Link>
-            <Link href="/settings" className="text-gray-600 hover:text-gray-900">
-              設定
-            </Link>
-            <LogoutButton />
-          </nav>
-        </div>
-      </header>
+      <Header />
       <main className="pt-8 pb-32">
         <div className="container mx-auto p-4 md:p-8">
           <div className="flex justify-end items-center mb-8">
