@@ -1,15 +1,19 @@
-"use client";
-
 import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, doc, updateDoc, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Income } from '@/types/Income';
 import { format } from 'date-fns';
+import AddItemModal from '@/components/ui/AddItemModal';
 
 interface IncomeFormProps {
   incomeToEdit?: Income | null;
   onFormClose?: () => void;
+}
+
+interface IncomeCategory {
+  id: string;
+  name: string;
 }
 
 const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, ref) => {
@@ -22,9 +26,10 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
     category: '',
     memo: '',
   });
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   // Refs for focus management
   const formRef = useRef<HTMLDivElement>(null);
@@ -32,7 +37,7 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
   const sourceRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const taxRef = useRef<HTMLInputElement>(null);
-  const categoryRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLSelectElement>(null);
   const memoRef = useRef<HTMLTextAreaElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -76,8 +81,8 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
     if (!user) return;
     const q = query(collection(db, 'users', user.uid, 'incomeCategories'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedCategories = snapshot.docs.map(doc => doc.data().name as string);
-      setCategories(Array.from(new Set(fetchedCategories)));
+      const fetchedCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IncomeCategory));
+      setCategories(fetchedCategories);
     });
     return () => unsubscribe();
   }, [user]);
@@ -86,7 +91,13 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>) => {
+  const handleAddCategory = async (name: string) => {
+    if (!user) return;
+    await addDoc(collection(db, 'users', user.uid, 'incomeCategories'), { name });
+    setFormData(prev => ({ ...prev, category: name }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement | HTMLSelectElement>) => {
     const target = e.target as HTMLElement;
 
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
@@ -206,10 +217,13 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
         </div>
         <div>
           <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
-          <input ref={categoryRef} list="income-categories" name="category" id="category" value={formData.category} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-          <datalist id="income-categories">
-            {categories.map(cat => <option key={cat} value={cat} />)}
-          </datalist>
+          <div className="flex gap-2">
+            <select ref={categoryRef} name="category" id="category" value={formData.category} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">選択してください</option>
+              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+          </div>
         </div>
         <div>
           <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
@@ -228,6 +242,14 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
           )}
         </div>
       </form>
+
+      <AddItemModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onAdd={handleAddCategory}
+        title="収入カテゴリーを追加"
+        placeholder="カテゴリー名 (例: 給料)"
+      />
     </div>
   );
 });

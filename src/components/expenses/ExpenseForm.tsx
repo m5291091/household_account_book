@@ -9,6 +9,7 @@ import { PaymentMethod } from '@/types/PaymentMethod';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { format } from 'date-fns';
 import { useCategorySuggestion } from '@/hooks/useCategorySuggestion';
+import AddItemModal from '@/components/ui/AddItemModal';
 
 interface ExpenseFormProps {
   expenseToEdit?: Expense | null;
@@ -33,6 +34,10 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Modal states
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
   
   const isEditMode = !!expenseToEdit;
 
@@ -141,6 +146,9 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           case 'paymentMethodId':
             memoRef.current?.focus();
             break;
+          case 'paymentMethodId':
+            memoRef.current?.focus();
+            break;
           case 'memo':
             submitButtonRef.current?.focus();
             break;
@@ -173,6 +181,18 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           break;
       }
     }
+  };
+
+  const handleAddCategory = async (name: string) => {
+    if (!user) return;
+    const docRef = await addDoc(collection(db, 'users', user.uid, 'categories'), { name });
+    setFormData(prev => ({ ...prev, categoryId: docRef.id }));
+  };
+
+  const handleAddPaymentMethod = async (name: string) => {
+    if (!user) return;
+    const docRef = await addDoc(collection(db, 'users', user.uid, 'paymentMethods'), { name });
+    setFormData(prev => ({ ...prev, paymentMethodId: docRef.id }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,17 +258,23 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         </div>
         <div>
           <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700">カテゴリー</label>
-          <select ref={categoryRef} name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="">選択してください</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <div className="flex gap-2">
+            <select ref={categoryRef} name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">選択してください</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+          </div>
         </div>
         <div>
           <label htmlFor="paymentMethodId" className="block text-sm font-medium text-gray-700">支払い方法</label>
-          <select ref={paymentMethodRef} name="paymentMethodId" id="paymentMethodId" value={formData.paymentMethodId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="">選択してください</option>
-            {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <div className="flex gap-2">
+            <select ref={paymentMethodRef} name="paymentMethodId" id="paymentMethodId" value={formData.paymentMethodId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">選択してください</option>
+              {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <button type="button" onClick={() => setIsPaymentMethodModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+          </div>
         </div>
         <div>
           <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
@@ -280,6 +306,21 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           )}
         </div>
       </form>
+
+      <AddItemModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onAdd={handleAddCategory}
+        title="カテゴリーを追加"
+        placeholder="カテゴリー名 (例: 食費)"
+      />
+      <AddItemModal
+        isOpen={isPaymentMethodModalOpen}
+        onClose={() => setIsPaymentMethodModalOpen(false)}
+        onAdd={handleAddPaymentMethod}
+        title="支払い方法を追加"
+        placeholder="支払い方法名 (例: PayPay)"
+      />
     </div>
   );
 };
