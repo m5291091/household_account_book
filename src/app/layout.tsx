@@ -22,7 +22,7 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen bg-gray-50 flex flex-col`}>
         <AuthProvider>
           <Header />
-          <div className="w-full max-w-7xl mx-auto p-6 md:p-12 flex-grow">
+          <div className="w-full max-w-screen-2xl mx-auto p-4 md:p-8 lg:p-12 flex-grow">
             {children}
           </div>
         </AuthProvider>
