@@ -32,7 +32,8 @@ const RegularPaymentSettings = () => {
   
   // Bulk selection state
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [bulkGroupId, setBulkGroupId] = useState('');
+  const [bulkAction, setBulkAction] = useState<string>(''); // 'group', 'category', 'method', 'date', 'delete'
+  const [bulkValue, setBulkValue] = useState<string>('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   
   const [loading, setLoading] = useState(true);
@@ -129,24 +130,50 @@ const RegularPaymentSettings = () => {
     );
   };
 
-  const handleBulkGroupAssign = async () => {
+  const executeBulkAction = async () => {
     if (!user || selectedTemplateIds.length === 0) return;
+    if (bulkAction !== 'delete' && !bulkValue) return;
+
+    if (bulkAction === 'delete' && !confirm(`${selectedTemplateIds.length}件のテンプレートを削除しますか？`)) return;
+
     setIsBulkUpdating(true);
     try {
       const batch = writeBatch(db);
       
       selectedTemplateIds.forEach(id => {
         const ref = doc(db, 'users', user.uid, 'regularPayments', id);
-        batch.update(ref, { groupId: bulkGroupId || null });
+        
+        switch (bulkAction) {
+          case 'delete':
+            batch.delete(ref);
+            break;
+          case 'group':
+            batch.update(ref, { groupId: bulkValue === 'none' ? null : bulkValue });
+            break;
+          case 'category':
+            batch.update(ref, { categoryId: bulkValue });
+            break;
+          case 'method':
+            batch.update(ref, { paymentMethodId: bulkValue });
+            break;
+          case 'date':
+            const date = new Date(bulkValue);
+            batch.update(ref, { 
+              nextPaymentDate: Timestamp.fromDate(date),
+              paymentDay: date.getDate()
+            });
+            break;
+        }
       });
       
       await batch.commit();
       setSelectedTemplateIds([]);
-      setBulkGroupId('');
-      // alert('グループを一括変更しました。');
+      setBulkAction('');
+      setBulkValue('');
+      alert('一括更新が完了しました。');
     } catch (err) {
       console.error(err);
-      setError('一括変更に失敗しました。');
+      setError('一括更新に失敗しました。');
     } finally {
       setIsBulkUpdating(false);
     }
@@ -195,23 +222,56 @@ const RegularPaymentSettings = () => {
 
       {/* Bulk Action Bar */}
       {selectedTemplateIds.length > 0 && (
-        <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
-          <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
-          <div className="flex gap-2">
+        <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg shadow-sm animate-fade-in space-y-3">
+          <div className="flex justify-between items-center">
+             <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
+             <button onClick={() => setSelectedTemplateIds([])} className="text-sm text-gray-500 hover:text-gray-700">選択解除</button>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-2">
             <select 
-              value={bulkGroupId} 
-              onChange={(e) => setBulkGroupId(e.target.value)} 
+              value={bulkAction} 
+              onChange={(e) => { setBulkAction(e.target.value); setBulkValue(''); }} 
               className="p-2 border rounded"
             >
-              <option value="">グループを選択 (なし)</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              <option value="">操作を選択...</option>
+              <option value="group">グループ変更</option>
+              <option value="category">カテゴリー変更</option>
+              <option value="method">支払い方法変更</option>
+              <option value="date">次回支払日変更</option>
+              <option value="delete">削除</option>
             </select>
+
+            {/* Dynamic Value Input */}
+            {bulkAction === 'group' && (
+                <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="p-2 border rounded flex-grow">
+                    <option value="">グループを選択...</option>
+                    <option value="none">グループなし</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+            )}
+            {bulkAction === 'category' && (
+                <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="p-2 border rounded flex-grow">
+                    <option value="">カテゴリーを選択...</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+            )}
+             {bulkAction === 'method' && (
+                <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="p-2 border rounded flex-grow">
+                    <option value="">支払い方法を選択...</option>
+                    {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+            )}
+            {bulkAction === 'date' && (
+                <input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="p-2 border rounded flex-grow" />
+            )}
+            
             <button 
-              onClick={handleBulkGroupAssign} 
-              disabled={isBulkUpdating}
-              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:bg-indigo-300"
+              onClick={executeBulkAction} 
+              disabled={isBulkUpdating || (!bulkValue && bulkAction !== 'delete') || !bulkAction}
+              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:bg-indigo-300 whitespace-nowrap"
             >
-              {isBulkUpdating ? '更新中...' : '一括変更'}
+              {isBulkUpdating ? '処理中...' : bulkAction === 'delete' ? '一括削除' : '適用'}
             </button>
           </div>
         </div>
