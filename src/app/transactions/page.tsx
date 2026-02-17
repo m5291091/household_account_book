@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseList from '@/components/expenses/ExpenseList';
 import RegularPaymentProcessor from '@/components/expenses/RegularPaymentProcessor';
 import { ExpenseFormData } from '@/types/Expense';
@@ -12,15 +11,9 @@ import Link from 'next/link';
 import LogoutButton from '@/components/auth/LogoutButton';
 
 const TransactionsPage = () => {
-  const [copiedExpenseData, setCopiedExpenseData] = useState<Partial<ExpenseFormData> | null>(null);
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
   const incomeFormRef = useRef<{ scrollIntoView: () => void }>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
-    setCopiedExpenseData(data);
-    incomeFormRef.current?.scrollIntoView();
-  };
 
   const handleEditIncome = (income: Income) => {
     setIncomeToEdit(income);
@@ -57,7 +50,15 @@ const TransactionsPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
-              <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
+              <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                <h2 className="text-xl font-bold mb-4">支出を記録</h2>
+                <Link 
+                  href="/transactions/expense" 
+                  className="inline-block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition duration-200"
+                >
+                  支出記録画面へ移動
+                </Link>
+              </div>
               <RegularPaymentProcessor month={currentMonth} />
               <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
             </div>
@@ -65,7 +66,11 @@ const TransactionsPage = () => {
               <ExpenseList 
                 month={currentMonth} 
                 onEditExpense={() => {}}
-                onCopyExpense={handleCopyExpense}
+                onCopyExpense={(data) => {
+                  // TODO: Implement copy functionality with navigation
+                  console.log('Copy feature to be implemented for new page', data);
+                  alert("コピー機能は現在調整中です。");
+                }}
               />
               <IncomeList onEditIncome={handleEditIncome} />
             </div>
