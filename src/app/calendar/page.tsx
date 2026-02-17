@@ -33,7 +33,6 @@ const CalendarPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900">カレンダー</h1>
-            <CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />
           </div>
 
           {/* Month Navigation */}
@@ -61,6 +60,7 @@ const CalendarPage = () => {
                   alert("コピー機能は現在調整中です。");
                 }}
                 viewMode={viewMode}
+                headerAction={<CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />}
               />
             </div>
           </div>
