@@ -1,4 +1,3 @@
-// /Users/alphabetagamma/work/APP/household_account_book/src/types/RegularPayment.ts
 import { Timestamp } from 'firebase/firestore';
 
 export interface RegularPayment {
@@ -14,6 +13,7 @@ export interface RegularPayment {
   // Tracking
   nextPaymentDate: Timestamp; // The date the next expense should be generated
   isChecked?: boolean;
+  groupId?: string; // ID of the RegularPaymentGroup
 }
 
 export interface RegularPaymentFormData {
@@ -25,4 +25,5 @@ export interface RegularPaymentFormData {
   frequency: 'months' | 'years';
   interval: string;
   nextPaymentDate: string; // YYYY-MM-DD
+  groupId?: string;
 }
