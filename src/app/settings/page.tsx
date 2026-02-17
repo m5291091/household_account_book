@@ -38,16 +38,10 @@ const SettingsPage = () => {
       icon: '💰',
     },
     {
-      title: '支払い方法管理',
-      description: 'クレジットカードや電子マネーなどの支払い方法を設定します。',
+      title: '支払い方法・口座管理',
+      description: '支払い方法、銀行口座、クレジットカードを管理します。',
       href: '/settings/payment-methods',
       icon: '💳',
-    },
-    {
-      title: '口座・資産管理',
-      description: '銀行口座やクレジットカード情報を登録します。',
-      href: '/settings/accounts',
-      icon: '🏦',
     },
     {
       title: 'カテゴリー管理',
