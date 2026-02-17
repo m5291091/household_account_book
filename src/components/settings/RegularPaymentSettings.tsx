@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, Timestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegularPayment, RegularPaymentFormData } from '@/types/RegularPayment';
 import { RegularPaymentGroup } from '@/types/RegularPaymentGroup';
@@ -30,10 +30,115 @@ const RegularPaymentSettings = () => {
   
   const [newGroupName, setNewGroupName] = useState('');
   
+  // Bulk selection state
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [bulkGroupId, setBulkGroupId] = useState('');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // ... (useEffect remains same)
+
+  // ... (resetForm, handleChange, handleAddGroup, handleDeleteGroup, handleSubmit, handleDelete remain same)
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedTemplateIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkGroupAssign = async () => {
+    if (!user || selectedTemplateIds.length === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const batch = await import('firebase/firestore').then(mod => mod.writeBatch(db)); // Dynamic import or use existing writeBatch? writeBatch is not imported yet.
+      // I need to import writeBatch.
+      // Let's use Promise.all for simplicity if writeBatch import is hassle in replace block, but batch is better.
+      // I will add writeBatch to imports.
+      
+      selectedTemplateIds.forEach(id => {
+        const ref = doc(db, 'users', user.uid, 'regularPayments', id);
+        batch.update(ref, { groupId: bulkGroupId || null });
+      });
+      
+      await batch.commit();
+      setSelectedTemplateIds([]);
+      setBulkGroupId('');
+      alert('グループを一括変更しました。');
+    } catch (err) {
+      console.error(err);
+      setError('一括変更に失敗しました。');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Group templates logic remains same
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md space-y-8">
+      {/* ... Title, Error ... */}
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">定期支出の管理</h2>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
+      {/* Group Management Section (Same) */}
+      <section className="p-4 border rounded-lg bg-gray-50">
+        {/* ... */}
+        <h3 className="text-lg font-semibold mb-2">グループ管理</h3>
+        <form onSubmit={handleAddGroup} className="flex gap-2 mb-2">
+          <input 
+            type="text" 
+            value={newGroupName} 
+            onChange={(e) => setNewGroupName(e.target.value)} 
+            placeholder="新しいグループ名 (例: サブスク)" 
+            className="flex-grow p-2 border rounded"
+          />
+          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">追加</button>
+        </form>
+        <div className="flex flex-wrap gap-2">
+          {groups.map(g => (
+            <div key={g.id} className="flex items-center bg-white border px-3 py-1 rounded-full text-sm">
+              <span className="mr-2">{g.name}</span>
+              <button onClick={() => handleDeleteGroup(g.id)} className="text-red-500 hover:text-red-700">×</button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Bulk Action Bar (Only show if items selected) */}
+      {selectedTemplateIds.length > 0 && (
+        <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between shadow-sm">
+          <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
+          <div className="flex gap-2">
+            <select 
+              value={bulkGroupId} 
+              onChange={(e) => setBulkGroupId(e.target.value)} 
+              className="p-2 border rounded"
+            >
+              <option value="">グループを選択 (なし)</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <button 
+              onClick={handleBulkGroupAssign} 
+              disabled={isBulkUpdating}
+              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:bg-indigo-300"
+            >
+              {isBulkUpdating ? '更新中...' : '一括変更'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Template Form (Same) */}
+      {/* ... */}
+      <form onSubmit={handleSubmit} className="space-y-4 p-4 border-2 border-indigo-100 rounded-lg">
+         {/* ... inputs ... */}
+         {/* Note: I need to replace the WHOLE content or be smart. 
+             Since the file is large, I'll replace specific parts if possible, but structure changes.
+             Let's try to replace the `const RegularPaymentSettings ...` block.
+         */}
+
     if (authLoading || !user) return;
     const unsubCategories = onSnapshot(query(collection(db, 'users', user.uid, 'categories')), s => setCategories(s.docs.map(d => ({ id: d.id, ...d.data() } as Category))));
     const unsubPaymentMethods = onSnapshot(query(collection(db, 'users', user.uid, 'paymentMethods')), s => setPaymentMethods(s.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod))));
@@ -118,6 +223,35 @@ const RegularPaymentSettings = () => {
     await deleteDoc(doc(db, 'users', user.uid, 'regularPayments', id));
   };
 
+  const handleToggleSelect = (id: string) => {
+    setSelectedTemplateIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkGroupAssign = async () => {
+    if (!user || selectedTemplateIds.length === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const batch = writeBatch(db);
+      
+      selectedTemplateIds.forEach(id => {
+        const ref = doc(db, 'users', user.uid, 'regularPayments', id);
+        batch.update(ref, { groupId: bulkGroupId || null });
+      });
+      
+      await batch.commit();
+      setSelectedTemplateIds([]);
+      setBulkGroupId('');
+      // alert('グループを一括変更しました。');
+    } catch (err) {
+      console.error(err);
+      setError('一括変更に失敗しました。');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   // Group templates
   const groupedTemplates = new Map<string, RegularPayment[]>();
   const noGroupTemplates: RegularPayment[] = [];
@@ -158,6 +292,30 @@ const RegularPaymentSettings = () => {
           ))}
         </div>
       </section>
+
+      {/* Bulk Action Bar */}
+      {selectedTemplateIds.length > 0 && (
+        <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
+          <div className="flex gap-2">
+            <select 
+              value={bulkGroupId} 
+              onChange={(e) => setBulkGroupId(e.target.value)} 
+              className="p-2 border rounded"
+            >
+              <option value="">グループを選択 (なし)</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <button 
+              onClick={handleBulkGroupAssign} 
+              disabled={isBulkUpdating}
+              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:bg-indigo-300"
+            >
+              {isBulkUpdating ? '更新中...' : '一括変更'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add Template Form */}
       <form onSubmit={handleSubmit} className="space-y-4 p-4 border-2 border-indigo-100 rounded-lg">
@@ -208,16 +366,24 @@ const RegularPaymentSettings = () => {
                 <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">{g.name}</div>
                 <ul className="divide-y">
                   {groupTemplates.map(t => (
-                    <li key={t.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
-                      <div>
-                        <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                        <p className="text-sm text-gray-600">
-                          次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
-                        </p>
-                      </div>
-                      <div className="flex space-x-3 text-sm">
-                        <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>
-                        <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 font-medium">削除</button>
+                    <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedTemplateIds.includes(t.id)} 
+                        onChange={() => handleToggleSelect(t.id)}
+                        className="mr-3 h-5 w-5 text-indigo-600 rounded cursor-pointer"
+                      />
+                      <div className="flex-grow flex justify-between items-center">
+                        <div>
+                          <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
+                          <p className="text-sm text-gray-600">
+                            次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
+                          </p>
+                        </div>
+                        <div className="flex space-x-3 text-sm">
+                          <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>
+                          <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 font-medium">削除</button>
+                        </div>
                       </div>
                     </li>
                   ))}
@@ -232,16 +398,24 @@ const RegularPaymentSettings = () => {
               <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">グループなし</div>
               <ul className="divide-y">
                 {noGroupTemplates.map(t => (
-                  <li key={t.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
-                    <div>
-                      <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                      <p className="text-sm text-gray-600">
-                        次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
-                      </p>
-                    </div>
-                    <div className="flex space-x-3 text-sm">
-                      <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>
-                      <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 font-medium">削除</button>
+                  <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedTemplateIds.includes(t.id)} 
+                      onChange={() => handleToggleSelect(t.id)}
+                      className="mr-3 h-5 w-5 text-indigo-600 rounded cursor-pointer"
+                    />
+                    <div className="flex-grow flex justify-between items-center">
+                      <div>
+                        <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
+                        <p className="text-sm text-gray-600">
+                          次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
+                        </p>
+                      </div>
+                      <div className="flex space-x-3 text-sm">
+                        <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>
+                        <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 font-medium">削除</button>
+                      </div>
                     </div>
                   </li>
                 ))}
