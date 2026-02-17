@@ -12,7 +12,7 @@ const Header = () => {
     { name: 'ダッシュボード', href: '/dashboard' },
     { name: '収入管理', href: '/transactions/income' },
     { name: '支出分析', href: '/analysis' },
-    { name: 'カレンダー・履歴', href: '/calendar' },
+    { name: 'カレンダー', href: '/calendar' },
     { name: '年間レポート', href: '/yearly-report' },
     { name: '設定', href: '/settings' },
   ];

@@ -25,15 +25,10 @@ const CalendarPage = () => {
     <div className="">
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold mb-8 text-gray-900">カレンダー・履歴</h1>
+          <h1 className="text-2xl font-bold mb-8 text-gray-900">カレンダー</h1>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
-              {/* Calendar placeholder or component */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold mb-4">カレンダー</h2>
-                <p className="text-gray-500">カレンダー表示機能は現在開発中です。</p>
-              </div>
               <RegularPaymentProcessor month={currentMonth} />
             </div>
             
