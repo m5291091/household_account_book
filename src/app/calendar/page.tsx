@@ -3,7 +3,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Header from '@/components/layout/Header';
 import ExpenseList from '@/components/expenses/ExpenseList';
 import RegularPaymentProcessor from '@/components/expenses/RegularPaymentProcessor';
 
@@ -24,7 +23,6 @@ const CalendarPage = () => {
 
   return (
     <div className="">
-      <Header />
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold mb-8 text-gray-900">カレンダー・履歴</h1>

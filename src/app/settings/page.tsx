@@ -9,7 +9,6 @@ import CategorySettings from '@/components/settings/CategorySettings';
 import PaymentMethodSettings from '@/components/settings/PaymentMethodSettings';
 import RegularPaymentSettings from '@/components/settings/RegularPaymentSettings';
 import IncomeCategorySettings from '@/components/settings/IncomeCategorySettings';
-import Header from '@/components/layout/Header';
 
 const SettingsPage = () => {
   const { user, loading } = useAuth();
@@ -31,7 +30,6 @@ const SettingsPage = () => {
 
   return (
     <div className="">
-      <Header />
       <main className="pt-8 pb-32">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-8">

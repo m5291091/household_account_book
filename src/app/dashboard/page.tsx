@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import Header from '@/components/layout/Header';
 import DashboardSummary from '@/components/dashboard/DashboardSummary';
 import IncomeExpenseChart from '@/components/dashboard/IncomeExpenseChart';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
@@ -40,8 +39,6 @@ const DashboardPage = () => {
 
   return (
     <div className="">
-      <Header />
-
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Month Navigation */}

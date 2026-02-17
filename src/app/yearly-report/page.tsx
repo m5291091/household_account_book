@@ -14,7 +14,6 @@ import { Expense } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import MonthlyDataTable from '@/components/dashboard/MonthlyDataTable';
-import Header from '@/components/layout/Header';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff', '#ff8c00', '#9932cc', '#20b2aa', '#d2691e'];
 
@@ -225,7 +224,6 @@ const YearlyReportPage = () => {
 
   return (
     <div className="">
-      <Header />
       <main className="pt-8 pb-32">
         <div className="container mx-auto p-4 md:p-8">
           <div className="flex justify-end items-center mb-8">

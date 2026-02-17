@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react';
 import IncomeForm from '@/components/income/IncomeForm';
 import IncomeList from '@/components/income/IncomeList';
-import Header from '@/components/layout/Header';
 import { Income } from '@/types/Income';
 
 const IncomePage = () => {
@@ -21,7 +20,6 @@ const IncomePage = () => {
 
   return (
     <div className="">
-      <Header />
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold mb-8 text-gray-900">収入管理</h1>
