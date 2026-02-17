@@ -222,6 +222,40 @@ const YearlyReportPage = () => {
     </div>
   );
 
+  const renderBarChart = (title: string, data: { name: string, value: number }[]) => {
+    // Calculate height based on the number of items to ensure readability
+    // Minimum height 400px, add 40px per item
+    const height = Math.max(400, data.length * 40);
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
+        <h3 className="text-xl font-bold mb-4 text-gray-800">{title}</h3>
+        <div style={{ width: '100%', height: height, overflowX: 'auto' }}>
+          {data.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={data}
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
+                <Legend />
+                <Bar dataKey="value" name="支出" fill="#8884d8" barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-gray-500 h-full flex items-center justify-center">
+              データがありません。
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="">
       <main className="pt-8 pb-32">
@@ -326,7 +360,7 @@ const YearlyReportPage = () => {
               {renderPieChart('カテゴリー別年間合計支出', expenseByCategory)}
               {renderPieChart('収入のカテゴリー別年間合計', incomeByCategory)}
               {renderPieChart('支払い方法別年間支出', expenseByPaymentMethod)}
-              {renderPieChart('店名・サービスでの年間合計支出', expenseByStore)}
+              {renderBarChart('店名・サービスでの年間合計支出', expenseByStore)}
             </div>
           </div>
         </div>
