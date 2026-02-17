@@ -21,6 +21,7 @@ const RegularIncomeSettings = () => {
   const [formData, setFormData] = useState<RegularIncomeFormData>({
     name: '',
     amount: '',
+    totalTaxableAmount: '',
     category: '',
     frequency: 'months',
     interval: '1',
@@ -57,6 +58,7 @@ const RegularIncomeSettings = () => {
     setFormData({
       name: '',
       amount: '',
+      totalTaxableAmount: '',
       category: '',
       frequency: 'months',
       interval: '1',
@@ -75,6 +77,7 @@ const RegularIncomeSettings = () => {
     setFormData({
       name: template.name,
       amount: String(template.amount),
+      totalTaxableAmount: String(template.totalTaxableAmount || ''),
       category: template.category,
       frequency: template.frequency,
       interval: String(template.interval),
@@ -113,6 +116,7 @@ const RegularIncomeSettings = () => {
       const dataToSave = {
         name: formData.name.trim(),
         amount: Number(formData.amount),
+        totalTaxableAmount: Number(formData.totalTaxableAmount) || 0,
         category: formData.category, 
         paymentDay: paymentDay,
         frequency: formData.frequency as 'months' | 'years',
@@ -213,14 +217,14 @@ const RegularIncomeSettings = () => {
              />
            </div>
            <div>
-             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">金額</label>
+             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">差引支給額</label>
              <input 
                type="number" 
                name="amount" 
                id="amount"
                value={formData.amount} 
                onChange={handleChange} 
-               placeholder="金額" 
+               placeholder="手取り額" 
                required 
                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
              />
@@ -228,7 +232,19 @@ const RegularIncomeSettings = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+           <div>
+             <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700 mb-1">課税合計</label>
+             <input 
+               type="number" 
+               name="totalTaxableAmount" 
+               id="totalTaxableAmount"
+               value={formData.totalTaxableAmount} 
+               onChange={handleChange} 
+               placeholder="所得税・住民税など" 
+               className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+             />
+           </div>
+           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">カテゴリー</label>
             <div className="flex gap-2">
               <select 
@@ -250,7 +266,10 @@ const RegularIncomeSettings = () => {
                 +
               </button>
             </div>
-          </div>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 mb-1">次回受取日</label>
             <input 
@@ -263,29 +282,28 @@ const RegularIncomeSettings = () => {
               className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">間隔</label>
-          <div className="flex items-center space-x-2">
-            <input 
-              type="number" 
-              name="interval" 
-              value={formData.interval} 
-              onChange={handleChange} 
-              min="1" 
-              required 
-              className="mt-1 block w-24 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <select 
-              name="frequency" 
-              value={formData.frequency} 
-              onChange={handleChange} 
-              className="mt-1 block px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="months">ヶ月ごと</option>
-              <option value="years">年ごと</option>
-            </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">間隔</label>
+            <div className="flex items-center space-x-2">
+                <input 
+                type="number" 
+                name="interval" 
+                value={formData.interval} 
+                onChange={handleChange} 
+                min="1" 
+                required 
+                className="mt-1 block w-24 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <select 
+                name="frequency" 
+                value={formData.frequency} 
+                onChange={handleChange} 
+                className="mt-1 block px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                <option value="months">ヶ月ごと</option>
+                <option value="years">年ごと</option>
+                </select>
+            </div>
           </div>
         </div>
 
