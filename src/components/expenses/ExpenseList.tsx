@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, orderBy, where, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, orderBy, where, Timestamp, writeBatch, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { PaymentMethod } from '@/types/PaymentMethod';
@@ -30,13 +30,18 @@ type BulkEditField = 'categoryId' | 'paymentMethodId' | 'store' | 'memo' | 'date
 const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
   const [allMonthExpenses, setAllMonthExpenses] = useState<Expense[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<(PaymentMethod & { order?: number })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '' });
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // New features state
+  const [checkColor, setCheckColor] = useState('#d4edda');
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const [aggregateChecks, setAggregateChecks] = useState<{[key: string]: boolean}>({});
 
   // Filtering and Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,14 +60,35 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     if (authLoading || !user) return;
     setLoading(true);
 
-    const pmQuery = query(collection(db, 'users', user.uid, 'paymentMethods'), orderBy('name'));
+    // Fetch Check Color
+    getDoc(doc(db, 'users', user.uid, 'settings', 'general')).then(snap => {
+      if (snap.exists() && snap.data().checkColor) {
+        setCheckColor(snap.data().checkColor);
+      }
+    });
+
+    // Fetch Payment Methods with sorting
+    const pmQuery = query(collection(db, 'users', user.uid, 'paymentMethods'));
     const unsubPaymentMethods = onSnapshot(pmQuery, (snapshot) => {
-      setPaymentMethods(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod)));
+      const pms = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod & { order?: number }));
+      pms.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || a.name.localeCompare(b.name));
+      setPaymentMethods(pms);
     });
 
     const catQuery = query(collection(db, 'users', user.uid, 'categories'), orderBy('name'));
     const unsubCategories = onSnapshot(catQuery, (snapshot) => {
       setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+    });
+
+    // Fetch Aggregate Checks
+    const monthKey = format(month, 'yyyy-MM');
+    const checksDocRef = doc(db, 'users', user.uid, 'monthlyChecks', monthKey);
+    const unsubChecks = onSnapshot(checksDocRef, (doc) => {
+      if (doc.exists()) {
+        setAggregateChecks(doc.data() as {[key: string]: boolean});
+      } else {
+        setAggregateChecks({});
+      }
     });
 
     const monthStart = startOfMonth(month);
@@ -87,6 +113,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
       unsubPaymentMethods();
       unsubCategories();
       unsubExpenses();
+      unsubChecks();
     };
   }, [user, month, authLoading]);
 
@@ -216,6 +243,52 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
       setError('一括更新に失敗しました。');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (index: number) => {
+    if (draggedItemIndex === null || draggedItemIndex === index) return;
+    
+    const newPaymentMethods = [...paymentMethods];
+    const [removed] = newPaymentMethods.splice(draggedItemIndex, 1);
+    newPaymentMethods.splice(index, 0, removed);
+    
+    setPaymentMethods(newPaymentMethods);
+    setDraggedItemIndex(null);
+
+    if (!user) return;
+    const batch = writeBatch(db);
+    newPaymentMethods.forEach((pm, idx) => {
+      const ref = doc(db, 'users', user.uid, 'paymentMethods', pm.id);
+      batch.update(ref, { order: idx });
+    });
+    try {
+      await batch.commit();
+    } catch (err) {
+      console.error("Failed to reorder", err);
+    }
+  };
+
+  const handleToggleAggregateCheck = async (key: string) => {
+    if (!user) return;
+    const monthKey = format(month, 'yyyy-MM');
+    const docRef = doc(db, 'users', user.uid, 'monthlyChecks', monthKey);
+    const newCheckedState = !aggregateChecks[key];
+    
+    setAggregateChecks(prev => ({ ...prev, [key]: newCheckedState }));
+
+    try {
+      await setDoc(docRef, { [key]: newCheckedState }, { merge: true });
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -410,11 +483,24 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
               </tr>
             </thead>
             <tbody>
-              {paymentMethods.map(pm => {
+              {paymentMethods.map((pm, index) => {
                 const pmIrregularExpenses = irregularExpenses.filter(exp => exp.paymentMethodId === pm.id);
                 const irregularTotal = pmIrregularExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+                
+                const irregularKey = `${pm.id}_irregular`;
+                const totalKey = `${pm.id}_total`;
+                const isIrregularChecked = aggregateChecks[irregularKey];
+                const isTotalChecked = aggregateChecks[totalKey];
+
                 return (
-                  <tr key={pm.id}>
+                  <tr 
+                    key={pm.id}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(index)}
+                    className="cursor-move hover:bg-gray-50 transition-colors"
+                  >
                     <td style={{ border: '1px solid #A9A9A9', padding: '8px', fontWeight: '600', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 10 }}>{pm.name}</td>
                     {monthDays.map(day => {
                       const dayExpenses = expensesByPaymentMethod[pm.id]?.[day] || [];
@@ -426,7 +512,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                         verticalAlign: 'top', 
                         minWidth: '120px', 
                         cursor: dayExpenses.length > 0 ? 'pointer' : 'default',
-                        backgroundColor: allChecked ? '#d4edda' : 'transparent' // 蛍光色のような緑色
+                        backgroundColor: allChecked ? checkColor : 'transparent'
                       };
                       return (
                         <td key={day} style={cellStyle} onClick={(e) => handleCellClick(e, dayExpenses, `${format(month, 'M月')}${day}日の支出`)}>
@@ -435,10 +521,42 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
                         </td>
                       );
                     })}
-                    <td style={{ border: '1px solid #A9A9A9', padding: '8px', verticalAlign: 'top', minWidth: '120px', cursor: pmIrregularExpenses.length > 0 ? 'pointer' : 'default' }} onClick={(e) => handleCellClick(e, pmIrregularExpenses, `${format(month, 'M月')}のイレギュラー支出`)}>
+                    <td 
+                      style={{ 
+                        border: '1px solid #A9A9A9', 
+                        padding: '8px', 
+                        verticalAlign: 'top', 
+                        minWidth: '120px', 
+                        cursor: 'pointer',
+                        backgroundColor: isIrregularChecked ? checkColor : 'transparent'
+                      }} 
+                      onClick={(e) => {
+                        if (pmIrregularExpenses.length > 0) {
+                          handleCellClick(e, pmIrregularExpenses, `${format(month, 'M月')}のイレギュラー支出`);
+                        } else {
+                          handleToggleAggregateCheck(irregularKey);
+                        }
+                      }}
+                      onDoubleClick={() => handleToggleAggregateCheck(irregularKey)}
+                    >
                       {pmIrregularExpenses.length > 0 && <div className="text-xs p-1 bg-yellow-100 rounded"><p className="font-bold text-center">合計: ¥{irregularTotal.toLocaleString()}</p><p className="text-center">({pmIrregularExpenses.length}件)</p></div>}
                     </td>
-                    <td style={{ border: '1px solid #A9A9A9', padding: '8px', fontWeight: 'bold', textAlign: 'right', position: 'sticky', right: 0, backgroundColor: 'white', zIndex: 10 }}>¥{totalsByPaymentMethod[pm.id]?.toLocaleString() || 0}</td>
+                    <td 
+                      style={{ 
+                        border: '1px solid #A9A9A9', 
+                        padding: '8px', 
+                        fontWeight: 'bold', 
+                        textAlign: 'right', 
+                        position: 'sticky', 
+                        right: 0, 
+                        zIndex: 10,
+                        backgroundColor: isTotalChecked ? checkColor : 'white',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleToggleAggregateCheck(totalKey)}
+                    >
+                      ¥{totalsByPaymentMethod[pm.id]?.toLocaleString() || 0}
+                    </td>
                   </tr>
                 );
               })}

@@ -49,6 +49,12 @@ const SettingsPage = () => {
       href: '/settings/categories',
       icon: '🏷️',
     },
+    {
+      title: '表示設定',
+      description: 'カレンダーの表示色などをカスタマイズします。',
+      href: '/settings/display',
+      icon: '🎨',
+    },
   ];
 
   return (
