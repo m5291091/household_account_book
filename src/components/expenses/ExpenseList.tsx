@@ -18,6 +18,7 @@ interface ExpenseListProps {
   onCopyExpense: (data: Partial<ExpenseFormData>) => void;
   viewMode: 'list' | 'calendar' | 'monthly_grid';
   headerAction?: React.ReactNode;
+  title?: string;
 }
 
 interface PopoverState {
@@ -29,7 +30,7 @@ interface PopoverState {
 
 type BulkEditField = 'categoryId' | 'paymentMethodId' | 'store' | 'memo' | 'date';
 
-const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerAction }: ExpenseListProps) => {
+const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerAction, title = "支出履歴" }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
   const [allMonthExpenses, setAllMonthExpenses] = useState<Expense[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<(PaymentMethod & { order?: number })[]>([]);
@@ -387,7 +388,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">支出履歴</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
         {headerAction}
       </div>
 

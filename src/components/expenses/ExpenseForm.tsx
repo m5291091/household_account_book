@@ -119,6 +119,24 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     }
   }, [formData.store, suggestionMap]);
 
+  const handleAmountBlur = () => {
+    try {
+      // Basic sanitization
+      const sanitized = formData.amount.replace(/[^0-9+\-*/.()\s]/g, '');
+      if (!sanitized) return;
+
+      // Evaluate
+      // eslint-disable-next-line no-new-func
+      const result = new Function('return ' + sanitized)();
+
+      if (!isNaN(result) && isFinite(result)) {
+        setFormData(prev => ({ ...prev, amount: Math.floor(result).toString() }));
+      }
+    } catch (e) {
+      // Ignore invalid expression
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -249,8 +267,8 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700">金額</label>
-          <input ref={amountRef} type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="0" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">金額</label>
+          <input ref={amountRef} type="text" name="amount" id="amount" value={formData.amount} onChange={handleChange} onBlur={handleAmountBlur} onKeyDown={handleKeyDown} placeholder="0 または 100+50" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
         </div>
         <div>
           <label htmlFor="store" className="block text-sm font-medium text-gray-700">店名・サービス名</label>

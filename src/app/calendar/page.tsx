@@ -62,6 +62,14 @@ const CalendarPage = () => {
                 viewMode={viewMode}
                 headerAction={<CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />}
               />
+              
+              <ExpenseList 
+                month={subMonths(currentMonth, 1)}
+                title="先月の支出履歴"
+                onEditExpense={() => {}}
+                onCopyExpense={() => {}}
+                viewMode={viewMode}
+              />
             </div>
           </div>
         </div>

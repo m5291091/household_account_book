@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Header from "@/components/layout/Header";
 import ShortcutProvider from "@/components/providers/ShortcutProvider";
 
@@ -33,14 +34,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${inter.className} min-h-screen bg-gray-50 flex flex-col`}>
+      <body className={`${inter.className} min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 flex flex-col`}>
         <AuthProvider>
-          <ShortcutProvider>
-            <Header />
-            <div className="w-full max-w-screen-2xl mx-auto p-4 md:p-8 lg:p-12 flex-grow">
-              {children}
-            </div>
-          </ShortcutProvider>
+          <ThemeProvider>
+            <ShortcutProvider>
+              <Header />
+              <div className="w-full max-w-screen-2xl mx-auto p-4 md:p-8 lg:p-12 flex-grow">
+                {children}
+              </div>
+            </ShortcutProvider>
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>
