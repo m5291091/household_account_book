@@ -34,7 +34,7 @@ const Header = () => {
                   key={item.href}
                   href={item.href}
                   className={`
-                    px-4 py-2 rounded-md text-sm font-medium transition duration-200 border
+                    px-4 py-2 mx-2 my-1 rounded-md text-sm font-medium transition duration-200 border
                     ${isActive 
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-300'
