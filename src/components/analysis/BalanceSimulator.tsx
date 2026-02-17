@@ -8,6 +8,7 @@ import { RegularIncome } from '@/types/RegularIncome';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import { addDays, format, getDate, getMonth, isSameDay, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { useExpensePrediction } from '@/hooks/useExpensePrediction';
 
 interface SimulationData {
   date: string;
@@ -23,6 +24,9 @@ const BalanceSimulator = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [simulationMonths, setSimulationMonths] = useState(6);
+
+  // Use AI Prediction for variable costs
+  const { prediction: monthlyTotalPrediction, loading: aiLoading } = useExpensePrediction(6);
 
   useEffect(() => {
     if (!user) return;
@@ -47,6 +51,26 @@ const BalanceSimulator = () => {
     };
     fetchData();
   }, [user]);
+
+  // Calculate estimated daily variable cost
+  const dailyVariableCost = useMemo(() => {
+    if (aiLoading || monthlyTotalPrediction === 0) return 2000; // Fallback
+
+    // Calculate total fixed monthly cost from RegularPayments
+    const totalFixedMonthly = regularPayments.reduce((sum, p) => {
+        let monthlyAmount = 0;
+        if (p.frequency === 'months') {
+            monthlyAmount = p.amount / Number(p.interval);
+        } else if (p.frequency === 'years') {
+            monthlyAmount = p.amount / (Number(p.interval) * 12);
+        }
+        return sum + monthlyAmount;
+    }, 0);
+
+    // Variable Cost = Total Prediction - Fixed Cost
+    const variableMonthly = Math.max(0, monthlyTotalPrediction - totalFixedMonthly);
+    return Math.round(variableMonthly / 30);
+  }, [monthlyTotalPrediction, regularPayments, aiLoading]);
 
   const simulationData = useMemo(() => {
     if (accounts.length === 0) return [];
@@ -125,9 +149,9 @@ const BalanceSimulator = () => {
       });
 
       // 4. Daily Variable Expense Estimation (Deduct from Bank)
-      // This is a rough estimate. Deduct from first bank account.
+      // Use calculated dailyVariableCost
       const targetAcc = simAccounts.find(a => a.type === 'bank');
-      if (targetAcc) targetAcc.simulatedBalance -= 2000; // Hardcoded estimate
+      if (targetAcc) targetAcc.simulatedBalance -= dailyVariableCost; 
 
       // Calculate Total Bank Balance (Available Liquidity)
       const totalBankBalance = simAccounts.reduce((sum, a) => (a.type === 'bank' || a.type === 'cash') ? sum + a.simulatedBalance : sum, 0);
@@ -148,7 +172,7 @@ const BalanceSimulator = () => {
     }
 
     return data;
-  }, [accounts, regularPayments, regularIncomes, paymentMethods, simulationMonths]);
+  }, [accounts, regularPayments, regularIncomes, paymentMethods, simulationMonths, dailyVariableCost]);
 
   // Extract monthly data points for the table (e.g., end of each month)
   const monthlyData = useMemo(() => {
@@ -217,7 +241,9 @@ const BalanceSimulator = () => {
           <ul className="list-disc list-inside space-y-1">
             <li>銀行口座と現金の合計残高の推移予測です。</li>
             <li>クレジットカード払いの支出は、設定された引き落とし日に銀行口座から減算されます。</li>
-            <li>毎日の変動費として仮の金額（¥2,000/日）を減算しています。</li>
+            <li>
+              毎日の変動費として、<strong>¥{dailyVariableCost.toLocaleString()}</strong> (AI支出予測に基づく推定額) を減算しています。
+            </li>
           </ul>
         </div>
 

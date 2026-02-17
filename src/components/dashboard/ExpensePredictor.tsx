@@ -1,103 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { db } from '@/lib/firebase/config';
-import { collection, query, getDocs, where, Timestamp, orderBy } from 'firebase/firestore';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Expense } from '@/types/Expense';
-import { startOfMonth, endOfMonth, subMonths, format, addMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { useExpensePrediction } from '@/hooks/useExpensePrediction';
 
 const ExpensePredictor = () => {
   const { user } = useAuth();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [historyMonths, setHistoryMonths] = useState<number>(6);
-
-  useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-
-    const today = new Date();
-    const startDate = startOfMonth(subMonths(today, historyMonths));
-    const endDate = endOfMonth(today);
-
-    const fetchData = async () => {
-      try {
-        const expensesQuery = query(
-          collection(db, 'users', user.uid, 'expenses'),
-          where('date', '>=', Timestamp.fromDate(startDate)),
-          where('date', '<=', Timestamp.fromDate(endDate)),
-          orderBy('date', 'asc')
-        );
-        const snapshot = await getDocs(expensesQuery);
-        const data = snapshot.docs.map(doc => doc.data() as Expense);
-        setExpenses(data);
-      } catch (err) {
-        console.error(err);
-        setError('データの取得に失敗しました。');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user, historyMonths]);
-
-  const { chartData, prediction, trend } = useMemo(() => {
-    if (expenses.length === 0) return { chartData: [], prediction: 0, trend: 'stable' };
-
-    // 1. Group by month
-    const monthlyTotals = new Map<string, number>();
-    expenses.forEach(exp => {
-      const monthKey = format(exp.date.toDate(), 'yyyy-MM');
-      monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + exp.amount);
-    });
-
-    // 2. Prepare data points for regression
-    // x = 0 (oldest month) to x = historyMonths (current month)
-    const sortedKeys = Array.from(monthlyTotals.keys()).sort();
-    const points = sortedKeys.map((key, index) => ({
-      x: index,
-      y: monthlyTotals.get(key) || 0,
-      month: key
-    }));
-
-    if (points.length < 2) return { chartData: [], prediction: 0, trend: 'insufficient_data' };
-
-    // 3. Linear Regression Calculation
-    const n = points.length;
-    const sumX = points.reduce((acc, p) => acc + p.x, 0);
-    const sumY = points.reduce((acc, p) => acc + p.y, 0);
-    const sumXY = points.reduce((acc, p) => acc + (p.x * p.y), 0);
-    const sumXX = points.reduce((acc, p) => acc + (p.x * p.x), 0);
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    // 4. Generate Chart Data
-    const displayData = points.map(p => ({
-      name: p.month,
-      実績: p.y,
-      トレンド: Math.round(slope * p.x + intercept)
-    }));
-
-    // 5. Predict Next Month
-    const nextX = points.length;
-    const nextMonthDate = addMonths(new Date(sortedKeys[sortedKeys.length - 1]), 1);
-    const predictedAmount = Math.max(0, Math.round(slope * nextX + intercept)); // No negative prediction
-
-    displayData.push({
-      name: format(nextMonthDate, 'yyyy-MM(予測)'),
-      実績: 0, // Placeholder
-      トレンド: predictedAmount
-    });
-
-    const trendType = slope > 1000 ? 'increasing' : slope < -1000 ? 'decreasing' : 'stable';
-
-    return { chartData: displayData, prediction: predictedAmount, trend: trendType };
-  }, [expenses]);
+  const { chartData, prediction, trend, loading, error } = useExpensePrediction(historyMonths);
 
   if (loading) return <div className="bg-white p-6 rounded-lg shadow-md">分析中...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
