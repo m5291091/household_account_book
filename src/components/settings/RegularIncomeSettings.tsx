@@ -177,6 +177,9 @@ const RegularIncomeSettings = () => {
               paymentDay: date.getDate()
             });
             break;
+          case 'tax':
+            batch.update(ref, { totalTaxableAmount: Number(bulkValue) });
+            break;
         }
       });
       
@@ -346,6 +349,7 @@ const RegularIncomeSettings = () => {
               <option value="">操作を選択...</option>
               <option value="category">カテゴリー変更</option>
               <option value="date">次回受取日変更</option>
+              <option value="tax">課税合計変更</option>
               <option value="delete">削除</option>
             </select>
 
@@ -357,6 +361,9 @@ const RegularIncomeSettings = () => {
             )}
             {bulkAction === 'date' && (
                 <input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="p-2 border rounded flex-grow" />
+            )}
+            {bulkAction === 'tax' && (
+                <input type="number" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} placeholder="課税合計" className="p-2 border rounded flex-grow" />
             )}
             
             <button 

@@ -76,6 +76,7 @@ const RegularIncomeProcessor = ({ month }: Props) => {
       await addDoc(collection(db, 'users', user.uid, 'incomes'), {
         date: Timestamp.fromDate(incomeDate),
         amount: template.amount,
+        totalTaxableAmount: template.totalTaxableAmount || 0,
         category: template.category,
         source: template.name, // Mapping template name to source
         memo: '定期収入からの自動記録',
