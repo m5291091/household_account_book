@@ -1,24 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
-import ExpenseForm from '@/components/expenses/ExpenseForm';
-import ExpenseList from '@/components/expenses/ExpenseList';
-import RegularPaymentProcessor from '@/components/expenses/RegularPaymentProcessor';
 import DashboardSummary from '@/components/dashboard/DashboardSummary';
 import IncomeExpenseChart from '@/components/dashboard/IncomeExpenseChart';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
 import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { Expense, ExpenseFormData } from '@/types/Expense';
-import { Income } from '@/types/Income';
-import IncomeForm from '@/components/income/IncomeForm';
-import IncomeList from '@/components/income/IncomeList';
+import { format, addMonths, subMonths } from 'date-fns';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
 import ExpensePredictor from '@/components/dashboard/ExpensePredictor';
@@ -28,9 +21,6 @@ const DashboardPage = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [copiedExpenseData, setCopiedExpenseData] = useState<Partial<ExpenseFormData> | null>(null);
-  const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
-  const incomeFormRef = useRef<{ scrollIntoView: () => void }>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -49,31 +39,17 @@ const DashboardPage = () => {
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
-  const startDate = startOfMonth(currentMonth);
-  const endDate = endOfMonth(currentMonth);
-
-  const handleCopyExpense = (data: Partial<ExpenseFormData>) => {
-    setCopiedExpenseData(data);
-    incomeFormRef.current?.scrollIntoView();
-  };
-
-  const handleEditIncome = (income: Income) => {
-    setIncomeToEdit(income);
-    incomeFormRef.current?.scrollIntoView();
-  };
-
-  const handleCloseIncomeForm = () => {
-    setIncomeToEdit(null);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="">
       <header className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">
             ダッシュボード
           </h1>
           <nav className="flex items-center space-x-4">
+            <Link href="/transactions" className="text-gray-600 hover:text-gray-900">
+              記録・編集
+            </Link>
             <Link href="/yearly-report" className="text-gray-600 hover:text-gray-900">
               年間レポート
             </Link>
@@ -98,39 +74,22 @@ const DashboardPage = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column for Analysis */}
-            <div className="space-y-8">
-              <DashboardSummary month={currentMonth} />
-              <ExpensePredictor month={currentMonth} />
-              <IncomeExpenseChart month={currentMonth} />
-              <IncomeCategoryChart startDate={startDate} endDate={endDate} />
-              <BudgetStatus month={currentMonth} />
-              <PaymentMethodChart month={currentMonth} />
-              <DashboardCharts month={currentMonth} />
-              <StoreChart month={currentMonth} />
-              <ExpenseAnalyzer />
-              <ExpenseCSVDownloader />
-            </div>
-
-            {/* Right Column for Data Entry */}
-            <div className="space-y-8">
-              <ExpenseForm initialData={copiedExpenseData} setInitialData={setCopiedExpenseData} />
-              <RegularPaymentProcessor month={currentMonth} />
-              <ExpenseList 
-                month={currentMonth} 
-                onEditExpense={() => {}}
-                onCopyExpense={handleCopyExpense}
-              />
-              <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
-              <IncomeList onEditIncome={handleEditIncome} />
-            </div>
+          <div className="space-y-8">
+            <DashboardSummary month={currentMonth} />
+            <ExpensePredictor month={currentMonth} />
+            <IncomeExpenseChart month={currentMonth} />
+            <IncomeCategoryChart month={currentMonth} />
+            <BudgetStatus month={currentMonth} />
+            <PaymentMethodChart month={currentMonth} />
+            <DashboardCharts month={currentMonth} />
+            <StoreChart month={currentMonth} />
+            <ExpenseAnalyzer />
+            <ExpenseCSVDownloader />
           </div>
         </div>
       </main>
     </div>
   );
 };
-
 
 export default DashboardPage;

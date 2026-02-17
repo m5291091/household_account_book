@@ -95,10 +95,10 @@ const EditRegularPaymentTemplatePage = () => {
     }
   };
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><p>読み込み中...</p></div>;
+  if (loading) return <div className="flex h-full items-center justify-center"><p>読み込み中...</p></div>;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="">
       <header className="bg-white shadow-md">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">定期支出テンプレートを編集</h1>

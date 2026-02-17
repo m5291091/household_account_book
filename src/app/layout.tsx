@@ -18,8 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+      <body className={`${inter.className} min-h-screen bg-gray-50 flex flex-col items-center`}>
+        <AuthProvider>
+          <div className="w-full max-w-7xl p-4 md:p-8 flex-grow">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
