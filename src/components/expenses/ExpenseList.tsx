@@ -93,10 +93,19 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
 
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
+    
+    let queryStart = monthStart;
+    let queryEnd = monthEnd;
+
+    if (viewMode === 'list' && startDate && endDate) {
+      queryStart = parseISO(startDate);
+      queryEnd = parseISO(`${endDate}T23:59:59`);
+    }
+
     const expensesQuery = query(
       collection(db, 'users', user.uid, 'expenses'),
-      where('date', '>=', Timestamp.fromDate(monthStart)),
-      where('date', '<=', Timestamp.fromDate(monthEnd)),
+      where('date', '>=', Timestamp.fromDate(queryStart)),
+      where('date', '<=', Timestamp.fromDate(queryEnd)),
       orderBy('date', 'desc')
     );
     const unsubExpenses = onSnapshot(expensesQuery, (snapshot) => {
@@ -115,7 +124,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
       unsubExpenses();
       unsubChecks();
     };
-  }, [user, month, authLoading]);
+  }, [user, month, authLoading, viewMode, startDate, endDate]);
 
   // Popover click outside handler
   useEffect(() => {
@@ -474,11 +483,19 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseL
              const dailyExpenses = allMonthExpenses.filter(e => isSameDay(e.date.toDate(), date));
              const total = dailyExpenses.reduce((sum, e) => sum + e.amount, 0);
              const isCurrentMonth = isSameMonth(date, month);
+             const dayKey = format(date, 'yyyy-MM-dd');
+             const isChecked = aggregateChecks[dayKey];
+
              return (
                <div 
                  key={i} 
-                 className={`p-2 border-r border-b border-gray-300 min-h-[100px] hover:bg-gray-50 cursor-pointer transition-colors ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : ''}`} 
+                 className={`p-2 border-r border-b border-gray-300 min-h-[100px] hover:bg-gray-50 cursor-pointer transition-colors ${!isCurrentMonth ? 'text-gray-400' : ''}`}
+                 style={{ backgroundColor: isChecked ? checkColor : (isCurrentMonth ? 'white' : '#f9fafb') }} 
                  onClick={(e) => handleCellClick(e, dailyExpenses, format(date, 'M月d日の支出'))}
+                 onDoubleClick={(e) => {
+                   e.stopPropagation(); // Prevent opening popover if empty? Actually popover check checks length.
+                   handleToggleAggregateCheck(dayKey);
+                 }}
                >
                  <div className={`text-right ${format(date, 'E', { locale: ja }) === '日' ? 'text-red-500' : format(date, 'E', { locale: ja }) === '土' ? 'text-blue-500' : ''}`}>
                    {format(date, 'd')}
