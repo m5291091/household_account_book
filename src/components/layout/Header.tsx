@@ -22,7 +22,7 @@ const Header = () => {
         <div className="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
           <div className="flex items-center">
             <Link href="/transactions/expense" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition duration-150">
-              家計簿アプリ
+              収支管理アプリ
             </Link>
           </div>
           
