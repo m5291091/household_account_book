@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { CreditCard, Wallet, Calendar, List, ArrowRight } from 'lucide-react'; // If lucide-react is available, else use simple text or emoji
 
 const SettingsPage = () => {
   const { user, loading } = useAuth();
