@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Fluid typography: Min 14px, Max 18px, scaling with viewport */
+  font-size: clamp(14px, 1vw + 10px, 18px);
+}
+
+body {
+  /* Ensure body uses the root font size */
+  font-size: 1rem;
+}
