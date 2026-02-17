@@ -44,6 +44,12 @@ const SettingsPage = () => {
       icon: '💳',
     },
     {
+      title: '口座・資産管理',
+      description: '銀行口座やクレジットカード情報を登録します。',
+      href: '/settings/accounts',
+      icon: '🏦',
+    },
+    {
       title: 'カテゴリー管理',
       description: '支出や収入のカテゴリーをカスタマイズします。',
       href: '/settings/categories',
