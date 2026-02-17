@@ -10,8 +10,8 @@ const Header = () => {
   const navItems = [
     { name: 'ダッシュボード', href: '/dashboard' },
     { name: '支出記録', href: '/transactions/expense' },
-    { name: '記録・編集一覧', href: '/transactions' },
-    { name: 'カレンダー', href: '/calendar' },
+    { name: '収入管理', href: '/transactions/income' },
+    { name: 'カレンダー・履歴', href: '/calendar' },
     { name: '年間レポート', href: '/yearly-report' },
     { name: '設定', href: '/settings' },
   ];
