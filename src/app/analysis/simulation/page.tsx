@@ -10,7 +10,7 @@ const SimulationPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-gray-900">資産シミュレーション</h1>
-            <Link href="/settings/accounts" className="text-blue-500 hover:underline text-sm">
+            <Link href="/settings/payment-methods" className="text-blue-500 hover:underline text-sm">
               口座・残高を設定する &rarr;
             </Link>
           </div>
