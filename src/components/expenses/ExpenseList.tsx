@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Expense, ExpenseFormData } from '@/types/Expense';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import { Category } from '@/types/Category';
-import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, parseISO, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ interface ExpenseListProps {
   month: Date;
   onEditExpense: (expense: Expense) => void;
   onCopyExpense: (data: Partial<ExpenseFormData>) => void;
+  viewMode: 'list' | 'calendar' | 'monthly_grid';
 }
 
 interface PopoverState {
@@ -27,7 +28,7 @@ interface PopoverState {
 
 type BulkEditField = 'categoryId' | 'paymentMethodId' | 'store' | 'memo' | 'date';
 
-const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) => {
+const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
   const [allMonthExpenses, setAllMonthExpenses] = useState<Expense[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<(PaymentMethod & { order?: number })[]>([]);
@@ -291,7 +292,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense }: ExpenseListProps) 
     }
   };
 
-  const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, dayExpenses: Expense[], title: string) => {
+  const handleCellClick = (e: React.MouseEvent<HTMLElement>, dayExpenses: Expense[], title: string) => {
     if (dayExpenses.length > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
       const popoverHeight = 300; // 推定の高さ
