@@ -2,6 +2,7 @@
 
 import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
 import ExpenseCSVDownloader from '@/components/dashboard/ExpenseCSVDownloader';
+import ExpensePredictor from '@/components/dashboard/ExpensePredictor';
 
 const AnalysisPage = () => {
   return (
@@ -11,6 +12,7 @@ const AnalysisPage = () => {
           <h1 className="text-2xl font-bold mb-8 text-gray-900">支出分析</h1>
           
           <div className="space-y-8">
+            <ExpensePredictor />
             <ExpenseAnalyzer />
             <ExpenseCSVDownloader />
           </div>

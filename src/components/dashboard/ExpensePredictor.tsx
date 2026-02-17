@@ -1,176 +1,156 @@
-// /src/components/dashboard/ExpensePredictor.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, getDocs, where, Timestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, Timestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
-import { Category } from '@/types/Category';
-import { startOfMonth, endOfMonth, subMonths, getMonth, getDate, getDaysInMonth } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { startOfMonth, endOfMonth, subMonths, format, addMonths } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-interface Prediction {
-  categoryName: string;
-  predictedAmount: number;
-  currentAmount: number;
-}
-
-const ExpensePredictor = ({ month }: { month: Date }) => {
+const ExpensePredictor = () => {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [analysisPeriod, setAnalysisPeriod] = useState<number>(12); // Default: 12 months
+  const [historyMonths, setHistoryMonths] = useState<number>(6);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
 
-    // Fetch last X months of expenses based on analysisPeriod
-    const startDate = startOfMonth(subMonths(month, analysisPeriod));
-    const endDate = endOfMonth(month);
+    const today = new Date();
+    const startDate = startOfMonth(subMonths(today, historyMonths));
+    const endDate = endOfMonth(today);
 
     const fetchData = async () => {
       try {
-        // Fetch categories
-        const catQuery = query(collection(db, 'users', user.uid, 'categories'));
-        const catSnapshot = await getDocs(catQuery);
-        const catMap = new Map<string, string>();
-        catSnapshot.forEach(doc => catMap.set(doc.id, doc.data().name));
-        setCategories(catMap);
-
-        // Fetch expenses
         const expensesQuery = query(
           collection(db, 'users', user.uid, 'expenses'),
           where('date', '>=', Timestamp.fromDate(startDate)),
-          where('date', '<=', Timestamp.fromDate(endDate))
+          where('date', '<=', Timestamp.fromDate(endDate)),
+          orderBy('date', 'asc')
         );
-        const expenseSnapshot = await getDocs(expensesQuery);
-        const expensesData = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-        setExpenses(expensesData);
-
+        const snapshot = await getDocs(expensesQuery);
+        const data = snapshot.docs.map(doc => doc.data() as Expense);
+        setExpenses(data);
       } catch (err) {
         console.error(err);
-        setError('予測データの取得に失敗しました。');
+        setError('データの取得に失敗しました。');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user, month, analysisPeriod]);
+  }, [user, historyMonths]);
 
-  const predictions = useMemo((): Prediction[] => {
-    if (expenses.length === 0 || categories.size === 0) return [];
+  const { chartData, prediction, trend } = useMemo(() => {
+    if (expenses.length === 0) return { chartData: [], prediction: 0, trend: 'stable' };
 
-    const monthlyCategoryTotals: Map<number, Map<string, number>> = new Map();
-
-    // Group expenses by month and category
-    expenses.forEach(expense => {
-      const expenseMonth = getMonth(expense.date.toDate());
-      if (!monthlyCategoryTotals.has(expenseMonth)) {
-        monthlyCategoryTotals.set(expenseMonth, new Map());
-      }
-      const categoryMap = monthlyCategoryTotals.get(expenseMonth)!;
-      const currentTotal = categoryMap.get(expense.categoryId) || 0;
-      categoryMap.set(expense.categoryId, currentTotal + expense.amount);
+    // 1. Group by month
+    const monthlyTotals = new Map<string, number>();
+    expenses.forEach(exp => {
+      const monthKey = format(exp.date.toDate(), 'yyyy-MM');
+      monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + exp.amount);
     });
 
-    const currentMonthIndex = getMonth(month);
-    const previousMonths = Array.from({ length: analysisPeriod }, (_, i) => getMonth(subMonths(month, i + 1)));
+    // 2. Prepare data points for regression
+    // x = 0 (oldest month) to x = historyMonths (current month)
+    const sortedKeys = Array.from(monthlyTotals.keys()).sort();
+    const points = sortedKeys.map((key, index) => ({
+      x: index,
+      y: monthlyTotals.get(key) || 0,
+      month: key
+    }));
 
-    const predictionsData: Prediction[] = [];
+    if (points.length < 2) return { chartData: [], prediction: 0, trend: 'insufficient_data' };
 
-    categories.forEach((categoryName, categoryId) => {
-      // Calculate average of the selected period
-      let totalOfPeriod = 0;
-      let monthsWithData = 0;
-      previousMonths.forEach(mIndex => {
-        if (monthlyCategoryTotals.has(mIndex) && monthlyCategoryTotals.get(mIndex)!.has(categoryId)) {
-          totalOfPeriod += monthlyCategoryTotals.get(mIndex)!.get(categoryId)!;
-          monthsWithData++;
-        }
-      });
-      
-      if (monthsWithData === 0) return;
+    // 3. Linear Regression Calculation
+    const n = points.length;
+    const sumX = points.reduce((acc, p) => acc + p.x, 0);
+    const sumY = points.reduce((acc, p) => acc + p.y, 0);
+    const sumXY = points.reduce((acc, p) => acc + (p.x * p.y), 0);
+    const sumXX = points.reduce((acc, p) => acc + (p.x * p.x), 0);
 
-      const predictedAmount = Math.round(totalOfPeriod / monthsWithData);
-      const currentAmount = monthlyCategoryTotals.get(currentMonthIndex)?.get(categoryId) || 0;
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
 
-      if (currentAmount > 0 || predictedAmount > 0) {
-        predictionsData.push({ categoryName, predictedAmount, currentAmount });
-      }
+    // 4. Generate Chart Data
+    const displayData = points.map(p => ({
+      name: p.month,
+      実績: p.y,
+      トレンド: Math.round(slope * p.x + intercept)
+    }));
+
+    // 5. Predict Next Month
+    const nextX = points.length;
+    const nextMonthDate = addMonths(new Date(sortedKeys[sortedKeys.length - 1]), 1);
+    const predictedAmount = Math.max(0, Math.round(slope * nextX + intercept)); // No negative prediction
+
+    displayData.push({
+      name: format(nextMonthDate, 'yyyy-MM(予測)'),
+      実績: 0, // Placeholder
+      トレンド: predictedAmount
     });
-    
-    return predictionsData.sort((a, b) => b.predictedAmount - a.predictedAmount);
 
-  }, [expenses, categories, month, analysisPeriod]);
+    const trendType = slope > 1000 ? 'increasing' : slope < -1000 ? 'decreasing' : 'stable';
 
-  const totalPrediction = useMemo(() => predictions.reduce((sum, p) => sum + p.predictedAmount, 0), [predictions]);
-  const totalCurrent = useMemo(() => predictions.reduce((sum, p) => sum + p.currentAmount, 0), [predictions]);
+    return { chartData: displayData, prediction: predictedAmount, trend: trendType };
+  }, [expenses]);
 
-  if (loading) return <div className="bg-white p-6 rounded-lg shadow-md text-center">予測を計算中...</div>;
-  if (error) return <div className="bg-white p-6 rounded-lg shadow-md text-center text-red-500">{error}</div>;
-  if (predictions.length === 0 && !loading) return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">今月の支出予測</h3>
-        <select
-          value={analysisPeriod}
-          onChange={(e) => setAnalysisPeriod(Number(e.target.value))}
-          className="p-1 border rounded-md text-sm bg-gray-50"
-        >
-          <option value={3}>過去3ヶ月平均</option>
-          <option value={6}>過去6ヶ月平均</option>
-          <option value={12}>過去12ヶ月平均</option>
-        </select>
-      </div>
-      <p className="text-center text-gray-500 py-10">予測を計算するための十分な過去のデータがありません。</p>
-    </div>
-  );
+  if (loading) return <div className="bg-white p-6 rounded-lg shadow-md">分析中...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">今月の支出予測</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">AI支出予測（単回帰分析）</h2>
         <select
-          value={analysisPeriod}
-          onChange={(e) => setAnalysisPeriod(Number(e.target.value))}
-          className="p-1 border rounded-md text-sm bg-gray-50"
+          value={historyMonths}
+          onChange={(e) => setHistoryMonths(Number(e.target.value))}
+          className="p-2 border rounded-md"
         >
-          <option value={3}>過去3ヶ月平均</option>
-          <option value={6}>過去6ヶ月平均</option>
-          <option value={12}>過去12ヶ月平均</option>
+          <option value={3}>過去3ヶ月</option>
+          <option value={6}>過去6ヶ月</option>
+          <option value={12}>過去1年</option>
         </select>
       </div>
-      <div className="mb-6 grid grid-cols-2 text-center">
-        <div>
-          <p className="text-gray-600">現在の合計</p>
-          <p className="text-2xl font-bold text-gray-800">¥{totalCurrent.toLocaleString()}</p>
+
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-indigo-50 p-4 rounded-lg text-center">
+          <p className="text-sm text-gray-600 mb-1">来月の予想支出</p>
+          <p className="text-3xl font-bold text-indigo-600">¥{prediction.toLocaleString()}</p>
         </div>
-        <div>
-          <p className="text-gray-600">着地予測</p>
-          <p className="text-2xl font-bold text-indigo-600">¥{totalPrediction.toLocaleString()}</p>
+        <div className={`p-4 rounded-lg text-center ${
+          trend === 'increasing' ? 'bg-red-50 text-red-600' : 
+          trend === 'decreasing' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'
+        }`}>
+          <p className="text-sm mb-1">トレンド判定</p>
+          <p className="text-xl font-bold">
+            {trend === 'increasing' ? '増加傾向 ⚠️' : 
+             trend === 'decreasing' ? '減少傾向 👏' : '横ばい ->'}
+          </p>
         </div>
       </div>
+
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
-          <BarChart
-            layout="vertical"
-            data={predictions.slice(0, 5)}
-            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
-          >
-            <XAxis type="number" hide />
-            <YAxis type="category" dataKey="categoryName" width={80} tick={{ fontSize: 12 }} />
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" padding={{ left: 30, right: 30 }} />
+            <YAxis />
             <Tooltip formatter={(value: number) => `¥${value.toLocaleString()}`} />
             <Legend />
-            <Bar dataKey="currentAmount" name="現在" fill="#8884d8" />
-            <Bar dataKey="predictedAmount" name="予測" fill="#82ca9d" />
-          </BarChart>
+            <Line type="monotone" dataKey="実績" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
+            <Line type="monotone" dataKey="トレンド" stroke="#82ca9d" strokeDasharray="5 5" strokeWidth={2} />
+            <ReferenceLine x={chartData[chartData.length - 2]?.name} stroke="red" strokeDasharray="3 3" />
+          </LineChart>
         </ResponsiveContainer>
       </div>
+      <p className="text-xs text-gray-500 mt-4 text-center">
+        ※ 過去の支出データに基づき、線形回帰モデルを用いて来月の支出を統計的に予測しています。
+      </p>
     </div>
   );
 };
