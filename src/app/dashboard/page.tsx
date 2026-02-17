@@ -8,12 +8,10 @@ import IncomeExpenseChart from '@/components/dashboard/IncomeExpenseChart';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import PaymentMethodChart from '@/components/dashboard/PaymentMethodChart';
 import BudgetStatus from '@/components/dashboard/BudgetStatus';
-import ExpenseAnalyzer from '@/components/dashboard/ExpenseAnalyzer';
 import { format, addMonths, subMonths } from 'date-fns';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
 import ExpensePredictor from '@/components/dashboard/ExpensePredictor';
-import ExpenseCSVDownloader from '@/components/dashboard/ExpenseCSVDownloader';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -61,8 +59,6 @@ const DashboardPage = () => {
             <PaymentMethodChart month={currentMonth} />
             <DashboardCharts month={currentMonth} />
             <StoreChart month={currentMonth} />
-            <ExpenseAnalyzer />
-            <ExpenseCSVDownloader />
           </div>
         </div>
       </main>
