@@ -486,9 +486,9 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
       )}
 
       {viewMode === 'monthly_grid' && (
-        <div className="grid grid-cols-7 border-t border-l border-gray-300 dark:border-gray-600">
+        <div className="grid grid-cols-7 border-t border-l border-gray-300 text-gray-900">
           {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
-             <div key={d} className={`p-2 border-r border-b border-gray-300 dark:border-gray-600 font-bold text-center bg-gray-100 dark:bg-gray-800 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>{d}</div>
+             <div key={d} className={`p-2 border-r border-b border-gray-300 font-bold text-center bg-gray-100 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>{d}</div>
           ))}
           {calendarDays.map((date, i) => {
              const dailyExpenses = allMonthExpenses.filter(e => isSameDay(e.date.toDate(), date));
@@ -500,7 +500,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
              return (
                <div 
                  key={i} 
-                 className={`p-2 border-r border-b border-gray-300 dark:border-gray-600 min-h-[100px] hover:bg-gray-50 dark:bg-gray-900 cursor-pointer transition-colors ${!isCurrentMonth ? 'text-gray-400' : ''}`}
+                 className={`p-2 border-r border-b border-gray-300 min-h-[100px] hover:bg-gray-50 cursor-pointer transition-colors ${!isCurrentMonth ? 'text-gray-400' : ''}`}
                  style={{ backgroundColor: isChecked ? checkColor : (isCurrentMonth ? 'white' : '#f9fafb') }} 
                  onClick={(e) => handleCellClick(e, dailyExpenses, format(date, 'M月d日の支出'))}
                  onDoubleClick={(e) => {
@@ -514,7 +514,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                  {total > 0 && <div className="text-sm font-bold text-red-600 mt-2 text-right">¥{total.toLocaleString()}</div>}
                  <div className="mt-1 space-y-1">
                    {dailyExpenses.slice(0, 3).map(exp => (
-                     <div key={exp.id} className="text-xs truncate text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded px-1">{exp.store || '支出'}</div>
+                     <div key={exp.id} className="text-xs truncate text-gray-600 bg-gray-100 rounded px-1">{exp.store || '支出'}</div>
                    ))}
                    {dailyExpenses.length > 3 && <div className="text-xs text-gray-400 text-center">他{dailyExpenses.length - 3}件</div>}
                  </div>
@@ -526,10 +526,10 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
 
       {viewMode === 'calendar' && (
         // Calendar View JSX (unchanged)
-        <div className="overflow-x-auto relative z-0">
+        <div className="overflow-x-auto relative z-0 text-gray-900">
           <table className="min-w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800">
+              <tr className="bg-gray-100">
                 <th style={{ border: '1px solid #A9A9A9', padding: '8px', position: 'sticky', left: 0, backgroundColor: '#F3F4F6', zIndex: 10 }}>支払方法</th>
                 {monthDays.map(day => {
                   const date = new Date(month.getFullYear(), month.getMonth(), day);
@@ -563,7 +563,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={handleDragOver}
                     onDrop={() => handleDrop(index)}
-                    className="cursor-move hover:bg-gray-50 dark:bg-gray-900 transition-colors"
+                    className="cursor-move hover:bg-gray-50 transition-colors"
                   >
                     <td style={{ border: '1px solid #A9A9A9', padding: '8px', fontWeight: '600', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 10 }}>{pm.name}</td>
                     {monthDays.map(day => {
@@ -627,19 +627,19 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
             </tbody>
           </table>
           {popover.visible && createPortal(
-            <div ref={popoverRef} style={popover.style} className="p-4 rounded-lg shadow-xl border w-80">
+            <div ref={popoverRef} style={popover.style} className="p-4 rounded-lg shadow-xl border w-80 bg-white">
               <h3 className="text-md font-bold mb-2">{popover.title}</h3>
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700 max-h-60 overflow-y-auto">
+              <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
                 {popover.expenses.map(expense => (
                   <li key={expense.id} className="py-2">
                     <div className="flex justify-between items-center">
                       <div className="flex-grow">
                         <div className="flex items-center">
-                          <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded mr-2"/>
+                          <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2"/>
                           <div>
                             <p className="text-sm font-semibold">¥{expense.amount.toLocaleString()}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-300">{expense.store || 'N/A'}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
+                            <p className="text-xs text-gray-600">{expense.store || 'N/A'}</p>
+                            <p className="text-xs text-gray-500">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
                             {expense.memo && <p className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</p>}
                           </div>
                         </div>
@@ -652,7 +652,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setPopover(p => ({ ...p, visible: false }))} className="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-sm py-1 px-2 rounded">閉じる</button>
+              <button onClick={() => setPopover(p => ({ ...p, visible: false }))} className="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-sm py-1 px-2 rounded text-gray-800">閉じる</button>
             </div>,
             document.body
           )}

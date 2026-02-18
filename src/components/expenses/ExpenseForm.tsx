@@ -281,7 +281,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
               <option value="">選択してください</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold">+</button>
+            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200 font-bold">+</button>
           </div>
         </div>
         <div>
@@ -291,7 +291,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
               <option value="">選択してください</option>
               {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button type="button" onClick={() => setIsPaymentMethodModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold">+</button>
+            <button type="button" onClick={() => setIsPaymentMethodModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200 font-bold">+</button>
           </div>
         </div>
         <div>
