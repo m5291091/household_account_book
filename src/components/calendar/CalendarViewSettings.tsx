@@ -59,7 +59,7 @@ const CalendarViewSettings = ({ onViewModeChange, currentViewMode }: CalendarVie
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 bg-gray-200 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 font-medium"
+        className="px-4 py-2 bg-gray-200 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 font-medium"
       >
         表示設定
       </button>

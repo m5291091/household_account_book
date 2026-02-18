@@ -37,11 +37,11 @@ const CalendarPage = () => {
 
           {/* Month Navigation */}
           <div className="flex justify-between items-center mb-8 bg-white dark:bg-black p-4 rounded-lg shadow-md">
-            <button onClick={goToPreviousMonth} className="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded">
+            <button onClick={goToPreviousMonth} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 font-bold py-2 px-4 rounded">
               &lt; 前月
             </button>
             <h2 className="text-2xl font-bold">{format(currentMonth, 'yyyy年 M月')}</h2>
-            <button onClick={goToNextMonth} className="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded">
+            <button onClick={goToNextMonth} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 font-bold py-2 px-4 rounded">
               次月 &gt;
             </button>
           </div>

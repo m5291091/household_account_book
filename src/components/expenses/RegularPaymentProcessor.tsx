@@ -204,7 +204,7 @@ const PaymentItem = ({ template, onToggleCheck, onRecord }: { template: RegularP
       <div className="flex items-center space-x-2">
         <button
           onClick={() => onToggleCheck(template)}
-          className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
+          className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
         >
           {template.isChecked ? '✔' : 'チェック'}
         </button>
