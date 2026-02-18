@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
+import Skeleton from '@/components/ui/Skeleton';
+
 const DashboardSummary = ({ month }: { month: Date }) => {
   const { user, loading: authLoading } = useAuth();
   const [totalExpenses, setTotalExpenses] = useState(0);
@@ -54,11 +56,23 @@ const DashboardSummary = ({ month }: { month: Date }) => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md animate-pulse">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">今月のサマリー</h2>
-        <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-        <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-        <div className="h-8 bg-gray-200 rounded w-2/3"></div>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+             <Skeleton className="h-6 w-20" />
+             <Skeleton className="h-8 w-32" />
+          </div>
+          <div className="flex justify-between items-center">
+             <Skeleton className="h-6 w-20" />
+             <Skeleton className="h-8 w-32" />
+          </div>
+          <hr className="border-gray-200 dark:border-gray-700" />
+          <div className="flex justify-between items-center">
+             <Skeleton className="h-6 w-20" />
+             <Skeleton className="h-10 w-40" />
+          </div>
+        </div>
       </div>
     );
   }

@@ -12,6 +12,8 @@ import { ja } from 'date-fns/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 
+import Skeleton from '@/components/ui/Skeleton';
+
 interface ExpenseListProps {
   month: Date;
   onEditExpense: (expense: Expense) => void;
@@ -30,13 +32,41 @@ interface PopoverState {
 
 type BulkEditField = 'categoryId' | 'paymentMethodId' | 'store' | 'memo' | 'date';
 
+import { useExpenses } from '@/hooks/useExpenses';
+import { useMasterData } from '@/hooks/useMasterData';
+
 const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerAction, title = "支出履歴" }: ExpenseListProps) => {
   const { user, loading: authLoading } = useAuth();
-  const [allMonthExpenses, setAllMonthExpenses] = useState<Expense[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<(PaymentMethod & { order?: number })[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Filtering and Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Calculate effective query dates
+  const { queryStart, queryEnd } = useMemo(() => {
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    
+    let start = monthStart;
+    let end = monthEnd;
+
+    if (viewMode === 'list' && startDate && endDate) {
+      start = parseISO(startDate);
+      end = parseISO(`${endDate}T23:59:59`);
+    }
+    return { queryStart: start, queryEnd: end };
+  }, [month, viewMode, startDate, endDate]);
+
+  // Custom Hooks
+  const { expenses: allMonthExpenses, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, queryStart, queryEnd);
+  const { categories, paymentMethods, loading: masterLoading } = useMasterData(user?.uid);
+
+  const loading = expensesLoading || masterLoading || authLoading;
+  const error = expensesError; // Simplified error handling
+
   const [popover, setPopover] = useState<PopoverState>({ visible: false, expenses: [], style: {}, title: '' });
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -45,42 +75,22 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [aggregateChecks, setAggregateChecks] = useState<{[key: string]: boolean}>({});
 
-  // Filtering and Search states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-
   // Bulk update states
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkEditField, setBulkEditField] = useState<BulkEditField>('categoryId');
   const [bulkEditValue, setBulkEditValue] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
-
+  // Manual setError for other ops
+  const [opError, setOpError] = useState<string | null>(null); 
 
   useEffect(() => {
     if (authLoading || !user) return;
-    setLoading(true);
 
     // Fetch Check Color
     getDoc(doc(db, 'users', user.uid, 'settings', 'general')).then(snap => {
       if (snap.exists() && snap.data().checkColor) {
         setCheckColor(snap.data().checkColor);
       }
-    });
-
-    // Fetch Payment Methods with sorting
-    const pmQuery = query(collection(db, 'users', user.uid, 'paymentMethods'));
-    const unsubPaymentMethods = onSnapshot(pmQuery, (snapshot) => {
-      const pms = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod & { order?: number }));
-      pms.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || a.name.localeCompare(b.name));
-      setPaymentMethods(pms);
-    });
-
-    const catQuery = query(collection(db, 'users', user.uid, 'categories'), orderBy('name'));
-    const unsubCategories = onSnapshot(catQuery, (snapshot) => {
-      setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
     });
 
     // Fetch Aggregate Checks
@@ -94,40 +104,10 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
       }
     });
 
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
-    
-    let queryStart = monthStart;
-    let queryEnd = monthEnd;
-
-    if (viewMode === 'list' && startDate && endDate) {
-      queryStart = parseISO(startDate);
-      queryEnd = parseISO(`${endDate}T23:59:59`);
-    }
-
-    const expensesQuery = query(
-      collection(db, 'users', user.uid, 'expenses'),
-      where('date', '>=', Timestamp.fromDate(queryStart)),
-      where('date', '<=', Timestamp.fromDate(queryEnd)),
-      orderBy('date', 'desc')
-    );
-    const unsubExpenses = onSnapshot(expensesQuery, (snapshot) => {
-      const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-      setAllMonthExpenses(expenses);
-      setLoading(false);
-    }, (err) => {
-      console.error(err);
-      setError('支出履歴の読み込みに失敗しました。');
-      setLoading(false);
-    });
-
     return () => {
-      unsubPaymentMethods();
-      unsubCategories();
-      unsubExpenses();
       unsubChecks();
     };
-  }, [user, month, authLoading, viewMode, startDate, endDate]);
+  }, [user, month, authLoading]);
 
   // Popover click outside handler
   useEffect(() => {
@@ -166,18 +146,13 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'expenses', id));
       setPopover(p => ({ ...p, visible: false }));
-    } catch (err) { console.error(err); setError('支出の削除に失敗しました。'); }
+    } catch (err) { console.error(err); setOpError('支出の削除に失敗しました。'); }
   };
   
   const handleToggleCheck = async (expenseToToggle: Expense) => {
     if (!user) return;
 
-    // Optimistic UI update
-    const updatedExpenses = allMonthExpenses.map(exp => 
-      exp.id === expenseToToggle.id ? { ...exp, isChecked: !exp.isChecked } : exp
-    );
-    setAllMonthExpenses(updatedExpenses);
-
+    // Optimistic UI update for popover only (list updates via subscription)
     const updatedPopoverExpenses = popover.expenses.map(exp =>
       exp.id === expenseToToggle.id ? { ...exp, isChecked: !exp.isChecked } : exp
     );
@@ -189,9 +164,8 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
       await updateDoc(expenseRef, { isChecked: !expenseToToggle.isChecked });
     } catch (err) { 
       console.error(err); 
-      setError('支出のチェック状態の更新に失敗しました。');
-      // Revert on error
-      setAllMonthExpenses(allMonthExpenses);
+      setOpError('支出のチェック状態の更新に失敗しました。');
+      // Revert popover on error
       setPopover(prev => ({ ...prev, expenses: popover.expenses }));
     }
   };
@@ -231,7 +205,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
     if (!confirm(`${selectedIds.length}件の支出を更新します。よろしいですか？`)) return;
 
     setIsUpdating(true);
-    setError(null);
+    setOpError(null);
     const batch = writeBatch(db);
     
     let updateData: any = {};
@@ -253,7 +227,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
       setBulkEditValue('');
     } catch (err) {
       console.error(err);
-      setError('一括更新に失敗しました。');
+      setOpError('一括更新に失敗しました。');
     } finally {
       setIsUpdating(false);
     }
@@ -274,7 +248,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
     const [removed] = newPaymentMethods.splice(draggedItemIndex, 1);
     newPaymentMethods.splice(index, 0, removed);
     
-    setPaymentMethods(newPaymentMethods);
+    // setPaymentMethods(newPaymentMethods); // Removed optimistic update as state is managed by hook
     setDraggedItemIndex(null);
 
     if (!user) return;
@@ -330,8 +304,27 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
     }
   };
 
-  if (loading) return <p>履歴を読み込んでいます...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
+        </div>
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800">
+               <div className="space-y-2">
+                 <Skeleton className="h-4 w-24" />
+                 <Skeleton className="h-3 w-32" />
+               </div>
+               <Skeleton className="h-6 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (error || opError) return <p className="text-red-500">{error || opError}</p>;
 
   // Calendar View Data Processing
   const daysInMonth = getDaysInMonth(month);
