@@ -28,7 +28,7 @@ const SignUp = () => {
       <h2 className="text-2xl font-bold mb-4">ユーザー登録</h2>
       <form onSubmit={handleSignUp}>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+          <label className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" htmlFor="email">
             メールアドレス
           </label>
           <input
@@ -36,12 +36,12 @@ const SignUp = () => {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline"
             required
           />
         </div>
         <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+          <label className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" htmlFor="password">
             パスワード
           </label>
           <input
@@ -49,7 +49,7 @@ const SignUp = () => {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 mb-3 leading-tight focus:outline-none focus:shadow-outline"
             required
           />
         </div>

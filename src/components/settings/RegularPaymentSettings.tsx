@@ -201,12 +201,12 @@ const RegularPaymentSettings = () => {
   });
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md space-y-8">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">定期支出の管理</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md space-y-8">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">定期支出の管理</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
 
       {/* Group Management */}
-      <section className="p-4 border rounded-lg bg-gray-50">
+      <section className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
         <h3 className="text-lg font-semibold mb-2">グループ管理</h3>
         <form onSubmit={handleAddGroup} className="flex gap-2 mb-2">
           <input 
@@ -220,7 +220,7 @@ const RegularPaymentSettings = () => {
         </form>
         <div className="flex flex-wrap gap-2">
           {groups.map(g => (
-            <div key={g.id} className="flex items-center bg-white border px-3 py-1 rounded-full text-sm">
+            <div key={g.id} className="flex items-center bg-white dark:bg-black border px-3 py-1 rounded-full text-sm">
               <span className="mr-2">{g.name}</span>
               <button onClick={() => handleDeleteGroup(g.id)} className="text-red-500 hover:text-red-700">×</button>
             </div>
@@ -233,7 +233,7 @@ const RegularPaymentSettings = () => {
         <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg shadow-sm animate-fade-in space-y-3">
           <div className="flex justify-between items-center">
              <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
-             <button onClick={() => setSelectedTemplateIds([])} className="text-sm text-gray-500 hover:text-gray-700">選択解除</button>
+             <button onClick={() => setSelectedTemplateIds([])} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200">選択解除</button>
           </div>
           
           <div className="flex flex-col md:flex-row gap-2">
@@ -296,7 +296,7 @@ const RegularPaymentSettings = () => {
         </div>
         
         <div>
-          <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700">初回支払日</label>
+          <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-200">初回支払日</label>
           <input type="date" id="nextPaymentDate" name="nextPaymentDate" value={formData.nextPaymentDate} onChange={handleChange} required className="w-full p-2 border rounded"/>
         </div>
 
@@ -325,7 +325,7 @@ const RegularPaymentSettings = () => {
       {/* List */}
       <div className="flex justify-between items-center border-b pb-2">
         <h3 className="text-xl font-bold">登録済みテンプレート</h3>
-        <p className="text-lg font-bold text-gray-700">合計: ¥{grandTotal.toLocaleString()}</p>
+        <p className="text-lg font-bold text-gray-700 dark:text-gray-200">合計: ¥{grandTotal.toLocaleString()}</p>
       </div>
       {loading ? <p>読み込み中...</p> : (
         <div className="space-y-6">
@@ -335,13 +335,13 @@ const RegularPaymentSettings = () => {
             const groupTotal = groupTotals.get(g.id) || 0;
             return (
               <div key={g.id} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between">
+                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between">
                   <span>{g.name}</span>
                   <span>小計: ¥{groupTotal.toLocaleString()}</span>
                 </div>
                 <ul className="divide-y">
                   {groupTemplates.map(t => (
-                    <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
+                    <li key={t.id} className="p-3 flex items-center hover:bg-gray-50 dark:bg-gray-900">
                       <input 
                         type="checkbox" 
                         checked={selectedTemplateIds.includes(t.id)} 
@@ -351,7 +351,7 @@ const RegularPaymentSettings = () => {
                       <div className="flex-grow flex justify-between items-center">
                         <div>
                           <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
                           </p>
                         </div>
@@ -370,13 +370,13 @@ const RegularPaymentSettings = () => {
           {/* No Group */}
           {noGroupTemplates.length > 0 && (
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between">
+              <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between">
                 <span>グループなし</span>
                 <span>小計: ¥{noGroupTotal.toLocaleString()}</span>
               </div>
               <ul className="divide-y">
                 {noGroupTemplates.map(t => (
-                  <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
+                  <li key={t.id} className="p-3 flex items-center hover:bg-gray-50 dark:bg-gray-900">
                     <input 
                       type="checkbox" 
                       checked={selectedTemplateIds.includes(t.id)} 
@@ -386,7 +386,7 @@ const RegularPaymentSettings = () => {
                     <div className="flex-grow flex justify-between items-center">
                       <div>
                         <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
                           次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
                         </p>
                       </div>

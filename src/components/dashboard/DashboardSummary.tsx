@@ -54,8 +54,8 @@ const DashboardSummary = ({ month }: { month: Date }) => {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md animate-pulse">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">今月のサマリー</h2>
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md animate-pulse">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">今月のサマリー</h2>
         <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
         <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
         <div className="h-8 bg-gray-200 rounded w-2/3"></div>
@@ -64,21 +64,21 @@ const DashboardSummary = ({ month }: { month: Date }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">今月のサマリー</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">今月のサマリー</h2>
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <p className="text-gray-600">合計収入</p>
+          <p className="text-gray-600 dark:text-gray-300">合計収入</p>
           <p className="text-2xl font-semibold text-green-600">¥{totalIncome.toLocaleString()}</p>
         </div>
         <div className="flex justify-between items-center">
-          <p className="text-gray-600">合計支出</p>
+          <p className="text-gray-600 dark:text-gray-300">合計支出</p>
           <p className="text-2xl font-semibold text-red-600">¥{totalExpenses.toLocaleString()}</p>
         </div>
         <hr/>
         <div className="flex justify-between items-center">
-          <p className="text-gray-600 font-bold">収支</p>
-          <p className={`text-3xl font-bold ${netBalance >= 0 ? 'text-gray-800' : 'text-red-600'}`}>
+          <p className="text-gray-600 dark:text-gray-300 font-bold">収支</p>
+          <p className={`text-3xl font-bold ${netBalance >= 0 ? 'text-gray-800 dark:text-gray-100' : 'text-red-600'}`}>
             ¥{netBalance.toLocaleString()}
           </p>
         </div>

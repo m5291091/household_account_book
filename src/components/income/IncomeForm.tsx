@@ -196,38 +196,38 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
   };
 
   return (
-    <div ref={formRef} className="bg-white p-6 rounded-lg shadow-md scroll-mt-8">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditMode ? '収入を編集' : '収入を記録'}</h2>
+    <div ref={formRef} className="bg-white dark:bg-black p-6 rounded-lg shadow-md scroll-mt-8">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">{isEditMode ? '収入を編集' : '収入を記録'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700">日付</label>
-          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">日付</label>
+          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="source" className="block text-sm font-medium text-gray-700">収入源</label>
-          <input ref={sourceRef} type="text" name="source" id="source" value={formData.source} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="給与、ボーナスなど" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-200">収入源</label>
+          <input ref={sourceRef} type="text" name="source" id="source" value={formData.source} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="給与、ボーナスなど" required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700">差引支給額</label>
-          <input ref={amountRef} type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="手取り額" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-200">差引支給額</label>
+          <input ref={amountRef} type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="手取り額" required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700">課税合計</label>
-          <input ref={taxRef} type="number" name="totalTaxableAmount" id="totalTaxableAmount" value={formData.totalTaxableAmount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="所得税・住民税など" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-200">課税合計</label>
+          <input ref={taxRef} type="number" name="totalTaxableAmount" id="totalTaxableAmount" value={formData.totalTaxableAmount} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="所得税・住民税など" className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700">カテゴリー</label>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-200">カテゴリー</label>
           <div className="flex gap-2">
-            <select ref={categoryRef} name="category" id="category" value={formData.category} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            <select ref={categoryRef} name="category" id="category" value={formData.category} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
               <option value="">選択してください</option>
               {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
-            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold">+</button>
           </div>
         </div>
         <div>
-          <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
-          <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+          <label htmlFor="memo" className="block text-sm font-medium text-gray-700 dark:text-gray-200">メモ</label>
+          <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
@@ -236,7 +236,7 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
             {isEditMode ? '更新する' : '記録する'}
           </button>
           {isEditMode && onFormClose && (
-            <button type="button" onClick={onFormClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">
+            <button type="button" onClick={onFormClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-md">
               キャンセル
             </button>
           )}

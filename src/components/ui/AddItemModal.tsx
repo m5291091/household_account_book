@@ -44,7 +44,7 @@ const AddItemModal = ({ isOpen, onClose, onAdd, title, placeholder }: AddItemMod
 
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-lg w-full max-w-md">
         <h3 className="text-lg font-bold mb-4">{title}</h3>
         <form onSubmit={handleSubmit}>
           <input
@@ -53,14 +53,14 @@ const AddItemModal = ({ isOpen, onClose, onAdd, title, placeholder }: AddItemMod
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={placeholder}
-            className="w-full p-2 border border-gray-300 rounded mb-4"
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-4"
             disabled={isSubmitting}
           />
           <div className="flex justify-end space-x-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200"
               disabled={isSubmitting}
             >
               キャンセル

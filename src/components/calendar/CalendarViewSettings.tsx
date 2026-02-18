@@ -59,17 +59,17 @@ const CalendarViewSettings = ({ onViewModeChange, currentViewMode }: CalendarVie
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+        className="px-4 py-2 bg-gray-200 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 font-medium"
       >
         表示設定
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-50 p-4 border">
+        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-black rounded-md shadow-lg z-50 p-4 border">
           <h3 className="text-lg font-bold mb-4 border-b pb-2">カレンダー表示設定</h3>
           
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">表示モード</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">表示モード</label>
             <div className="flex flex-col space-y-2">
               <label className="flex items-center">
                 <input
@@ -108,15 +108,15 @@ const CalendarViewSettings = ({ onViewModeChange, currentViewMode }: CalendarVie
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">チェック時の背景色</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">チェック時の背景色</label>
             <div className="flex items-center space-x-3">
               <input
                 type="color"
                 value={checkColor}
                 onChange={(e) => handleColorChange(e.target.value)}
-                className="h-8 w-12 border border-gray-300 rounded p-0 cursor-pointer"
+                className="h-8 w-12 border border-gray-300 dark:border-gray-600 rounded p-0 cursor-pointer"
               />
-              <span className="text-sm text-gray-500">{checkColor}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{checkColor}</span>
             </div>
           </div>
         </div>

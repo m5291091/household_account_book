@@ -68,21 +68,21 @@ const DateRangeAnalyzer = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">期間・支払方法別集計</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">期間・支払方法別集計</h3>
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">開始日</label>
-            <input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"/>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-200">開始日</label>
+            <input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md"/>
           </div>
           <div>
-            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">終了日</label>
-            <input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"/>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-200">終了日</label>
+            <input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md"/>
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">支払い方法（複数選択可）</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">支払い方法（複数選択可）</label>
           <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border p-2 rounded-md">
             {paymentMethods.map(method => (
               <div key={method.id} className="flex items-center">
@@ -91,9 +91,9 @@ const DateRangeAnalyzer = () => {
                   type="checkbox"
                   checked={selectedMethods.includes(method.id)}
                   onChange={() => handleMethodChange(method.id)}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  className="h-4 w-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded"
                 />
-                <label htmlFor={`method-${method.id}`} className="ml-2 block text-sm text-gray-900">{method.name}</label>
+                <label htmlFor={`method-${method.id}`} className="ml-2 block text-sm text-gray-900 dark:text-white">{method.name}</label>
               </div>
             ))}
           </div>
@@ -103,8 +103,8 @@ const DateRangeAnalyzer = () => {
         </button>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {total !== null && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-center">
-            <p className="text-lg font-semibold text-gray-800">合計支出</p>
+          <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">合計支出</p>
             <p className="text-2xl font-bold text-indigo-600">¥{total.toLocaleString()}</p>
           </div>
         )}

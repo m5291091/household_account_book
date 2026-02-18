@@ -93,16 +93,16 @@ const ExpenseCSVDownloader = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">支出履歴をダウンロード</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">支出履歴をダウンロード</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">開始日</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 rounded-md" />
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">開始日</label>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">終了日</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 rounded-md" />
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">終了日</label>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md" />
         </div>
       </div>
       <button

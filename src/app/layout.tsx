@@ -34,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${inter.className} min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 flex flex-col`}>
+      <body className={`${inter.className} min-h-screen bg-gray-50 dark:bg-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col`}>
         <AuthProvider>
           <ThemeProvider>
             <ShortcutProvider>

@@ -104,17 +104,17 @@ const EditRegularPaymentTemplatePage = () => {
 
   return (
     <div className="">
-      <header className="bg-white shadow-md">
+      <header className="bg-white dark:bg-black shadow-md">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">定期支出テンプレートを編集</h1>
-          <Link href="/settings/expenses" className="text-gray-600 hover:text-gray-900">&lt; 設定に戻る</Link>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">定期支出テンプレートを編集</h1>
+          <Link href="/settings/expenses" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white">&lt; 設定に戻る</Link>
         </div>
       </header>
       <main className="py-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           {error && <p className="text-red-500 mb-4">{error}</p>}
           {formData ? (
-            <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md">
+            <form onSubmit={handleSubmit} className="space-y-4 bg-white dark:bg-black p-6 rounded-lg shadow-md">
               <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="名称 (例: 家賃)" required className="w-full p-2 border rounded"/>
               <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="基準額" required className="w-full p-2 border rounded"/>
               <select name="categoryId" value={formData.categoryId} onChange={handleChange} required className="w-full p-2 border rounded"><option value="">カテゴリー</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -126,7 +126,7 @@ const EditRegularPaymentTemplatePage = () => {
               </select>
 
               <div>
-                <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700">次回支払日</label>
+                <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-200">次回支払日</label>
                 <input type="date" id="nextPaymentDate" name="nextPaymentDate" value={formData.nextPaymentDate} onChange={handleChange} required className="w-full p-2 border rounded"/>
               </div>
               <div className="flex items-center space-x-2">

@@ -173,12 +173,12 @@ const CreditCardStatus = () => {
   }, [bankAccounts, cardPayments]);
 
 
-  if (loading) return <div className="p-4 bg-white rounded-lg shadow animate-pulse h-40"></div>;
+  if (loading) return <div className="p-4 bg-white dark:bg-black rounded-lg shadow animate-pulse h-40"></div>;
   if (cardPayments.length === 0) return null;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-      <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md mb-8">
+      <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100 flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
@@ -195,11 +195,11 @@ const CreditCardStatus = () => {
           const shortage = bankStatus ? bankStatus.totalDue - bankStatus.balance : 0;
 
           return (
-            <div key={cp.cardId} className={`border-l-4 p-4 rounded bg-gray-50 ${!bankStatus || isSafe ? 'border-green-500' : 'border-red-500'}`}>
+            <div key={cp.cardId} className={`border-l-4 p-4 rounded bg-gray-50 dark:bg-gray-900 ${!bankStatus || isSafe ? 'border-green-500' : 'border-red-500'}`}>
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="font-bold text-lg text-gray-800">{cp.cardName}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{cp.cardName}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     引き落とし日: <span className="font-bold">{cp.paymentDate.toLocaleDateString()}</span>
                   </p>
                   <p className="text-xs text-gray-400">
@@ -207,18 +207,18 @@ const CreditCardStatus = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-800">¥{cp.amount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">¥{cp.amount.toLocaleString()}</p>
                 </div>
               </div>
 
               {bankStatus ? (
-                <div className="text-sm pt-2 border-t border-gray-200 mt-2">
+                <div className="text-sm pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-gray-600 font-bold">{bankStatus.name}</span>
-                      <span className="text-gray-600">残高: ¥{bankStatus.balance.toLocaleString()}</span>
+                      <span className="text-gray-600 dark:text-gray-300 font-bold">{bankStatus.name}</span>
+                      <span className="text-gray-600 dark:text-gray-300">残高: ¥{bankStatus.balance.toLocaleString()}</span>
                    </div>
                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         (口座引落予定総額: ¥{bankStatus.totalDue.toLocaleString()})
                       </span>
                       {isSafe ? (

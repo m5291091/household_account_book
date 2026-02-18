@@ -62,14 +62,14 @@ const IncomeList = ({ onEditIncome }: IncomeListProps) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">収入一覧</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">収入一覧</h2>
       
       {/* Date Range Filter */}
       <div className="flex items-center space-x-2 mb-6">
-        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
-        <span className="text-gray-500">〜</span>
-        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md" />
+        <span className="text-gray-500 dark:text-gray-400">〜</span>
+        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md" />
       </div>
 
       {loading && <p className="text-center">読み込み中...</p>}
@@ -77,21 +77,21 @@ const IncomeList = ({ onEditIncome }: IncomeListProps) => {
       
       {!loading && !error && (
         incomes.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">指定された期間の収入データはありません。</p>
+          <p className="text-gray-500 dark:text-gray-400 text-center py-4">指定された期間の収入データはありません。</p>
         ) : (
           <ul className="space-y-4">
             {incomes.map(income => (
-              <li key={income.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+              <li key={income.id} className="p-4 border rounded-lg hover:bg-gray-50 dark:bg-gray-900 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm text-gray-500">{format(income.date.toDate(), 'yyyy/MM/dd')}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{format(income.date.toDate(), 'yyyy/MM/dd')}</p>
                     <p className="font-semibold text-lg">{income.source} ({income.category})</p>
-                    {income.memo && <p className="text-sm text-gray-600 mt-1">{income.memo}</p>}
+                    {income.memo && <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{income.memo}</p>}
                   </div>
                   <div className="text-right flex-shrink-0 ml-4">
                     <p className="font-bold text-xl text-green-600">¥{income.amount.toLocaleString()}</p>
                     {income.totalTaxableAmount && (
-                      <p className="text-sm text-gray-500">課税合計: ¥{income.totalTaxableAmount.toLocaleString()}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">課税合計: ¥{income.totalTaxableAmount.toLocaleString()}</p>
                     )}
                   </div>
                 </div>

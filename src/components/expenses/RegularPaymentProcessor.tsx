@@ -141,14 +141,14 @@ const RegularPaymentProcessor = ({ month }: Props) => {
   });
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">今月の定期支出</h2>
-        <p className="text-lg font-bold text-gray-700">合計: ¥{totalAmount.toLocaleString()}</p>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">今月の定期支出</h2>
+        <p className="text-lg font-bold text-gray-700 dark:text-gray-200">合計: ¥{totalAmount.toLocaleString()}</p>
       </div>
       {error && <p className="text-red-500">{error}</p>}
       {upcomingPayments.length === 0 ? (
-        <p className="text-gray-500">今月支払う予定の定期支出はありません。</p>
+        <p className="text-gray-500 dark:text-gray-400">今月支払う予定の定期支出はありません。</p>
       ) : (
         <div className="space-y-6">
           {groups.map(g => {
@@ -158,7 +158,7 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
             return (
               <div key={g.id} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between items-center">
+                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between items-center">
                   <span>{g.name}</span>
                   <span className="text-sm">小計: ¥{groupTotal.toLocaleString()}</span>
                 </div>
@@ -173,7 +173,7 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
           {noGroupPayments.length > 0 && (
             <div className="border rounded-lg overflow-hidden">
-               <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between items-center">
+               <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between items-center">
                   <span>グループなし</span>
                   <span className="text-sm">小計: ¥{noGroupPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
                 </div>
@@ -194,7 +194,7 @@ const PaymentItem = ({ template, onToggleCheck, onRecord }: { template: RegularP
   const textStyle = template.isChecked ? { color: 'red' } : {};
   const paymentDate = template.nextPaymentDate.toDate();
   return (
-    <li style={textStyle} className="flex items-center justify-between p-3 hover:bg-gray-50 bg-white">
+    <li style={textStyle} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:bg-gray-900 bg-white dark:bg-black">
       <div>
         <p className="font-semibold">{template.name}</p>
         <p className="text-sm">

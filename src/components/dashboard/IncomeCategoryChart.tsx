@@ -23,8 +23,8 @@ const IncomeCategoryChart = ({ month }: { month: Date }) => {
   const colors = data.map((_, index) => generateHslColor(index, data.length));
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mt-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">カテゴリー別収入</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md mt-6">
+      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">カテゴリー別収入</h3>
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <h4 className="text-lg font-semibold text-center mb-2">収入合計</h4>

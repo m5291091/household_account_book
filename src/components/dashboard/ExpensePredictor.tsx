@@ -10,13 +10,13 @@ const ExpensePredictor = () => {
   const [historyMonths, setHistoryMonths] = useState<number>(6);
   const { chartData, prediction, trend, loading, error } = useExpensePrediction(historyMonths);
 
-  if (loading) return <div className="bg-white p-6 rounded-lg shadow-md">分析中...</div>;
+  if (loading) return <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">分析中...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">AI支出予測（単回帰分析）</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">AI支出予測（単回帰分析）</h2>
         <select
           value={historyMonths}
           onChange={(e) => setHistoryMonths(Number(e.target.value))}
@@ -30,12 +30,12 @@ const ExpensePredictor = () => {
 
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-indigo-50 p-4 rounded-lg text-center">
-          <p className="text-sm text-gray-600 mb-1">来月の予想支出</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">来月の予想支出</p>
           <p className="text-3xl font-bold text-indigo-600">¥{prediction.toLocaleString()}</p>
         </div>
         <div className={`p-4 rounded-lg text-center ${
           trend === 'increasing' ? 'bg-red-50 text-red-600' : 
-          trend === 'decreasing' ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'
+          trend === 'decreasing' ? 'bg-green-50 text-green-600' : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300'
         }`}>
           <p className="text-sm mb-1">トレンド判定</p>
           <p className="text-xl font-bold">
@@ -59,7 +59,7 @@ const ExpensePredictor = () => {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-xs text-gray-500 mt-4 text-center">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
         ※ 過去の支出データに基づき、線形回帰モデルを用いて来月の支出を統計的に予測しています。
       </p>
     </div>

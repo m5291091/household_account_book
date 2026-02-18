@@ -29,10 +29,10 @@ const IncomePage = () => {
     <div className="">
       <main className="pt-8 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold mb-8 text-gray-900">収入管理</h1>
+          <h1 className="text-2xl font-bold mb-8 text-gray-900 dark:text-white">収入管理</h1>
 
           {/* Month Navigation */}
-          <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow-md">
+          <div className="flex justify-between items-center mb-8 bg-white dark:bg-black p-4 rounded-lg shadow-md">
             <button onClick={goToPreviousMonth} className="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded">
               &lt; 前月
             </button>

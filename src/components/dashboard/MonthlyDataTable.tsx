@@ -52,7 +52,7 @@ const MonthlyDataTable: FC<MonthlyDataTableProps> = ({ title, data, columns, fil
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md mt-4">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-lg font-semibold">{title}</h4>
         <button
@@ -63,31 +63,31 @@ const MonthlyDataTable: FC<MonthlyDataTableProps> = ({ title, data, columns, fil
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               {columns.map(col => (
-                <th key={col.key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th key={col.key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {col.label}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
             {data.map((row, index) => (
               <tr key={index}>
                 {columns.map(col => (
-                  <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {typeof row[col.key] === 'number' ? (row[col.key] as number).toLocaleString() : row[col.key]}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
-          <tfoot className="bg-gray-50">
+          <tfoot className="bg-gray-50 dark:bg-gray-900">
             <tr>
               {columns.map(col => (
-                <th key={col.key} scope="row" className="px-6 py-3 text-left text-sm font-bold text-gray-700">
+                <th key={col.key} scope="row" className="px-6 py-3 text-left text-sm font-bold text-gray-700 dark:text-gray-200">
                   {typeof totals[col.key] === 'number' ? (totals[col.key] as number).toLocaleString() : totals[col.key]}
                 </th>
               ))}

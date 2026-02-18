@@ -15,7 +15,7 @@ const SimulationPage = () => {
             description="この機能にはパスワードロックがかかっています。閲覧するにはパスワードを入力してください。"
           >
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">資産シミュレーション</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">資産シミュレーション</h1>
               <Link href="/settings/payment-methods" className="text-blue-500 hover:underline text-sm">
                 口座・残高を設定する &rarr;
               </Link>

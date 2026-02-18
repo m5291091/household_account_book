@@ -77,7 +77,7 @@ const DashboardCharts = ({ month }: { month: Date }) => {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md animate-pulse">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
         <div className="h-64 bg-gray-200 rounded"></div>
       </div>
@@ -85,8 +85,8 @@ const DashboardCharts = ({ month }: { month: Date }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">カテゴリー別支出</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">カテゴリー別支出</h2>
       <div style={{ width: '100%', height: 500 }}>
         {categoryData.length > 0 ? (
           <ResponsiveContainer>
@@ -112,7 +112,7 @@ const DashboardCharts = ({ month }: { month: Date }) => {
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500">この月のデータはありません。</p>
+            <p className="text-gray-500 dark:text-gray-400">この月のデータはありません。</p>
           </div>
         )}
       </div>

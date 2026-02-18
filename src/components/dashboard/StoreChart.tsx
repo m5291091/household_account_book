@@ -67,17 +67,17 @@ const StoreChart = ({ month }: StoreChartProps) => {
   if (loading) return <p>グラフを読み込んでいます...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
   if (storeData.length === 0) return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">店名・サービス別支出</h3>
-      <p className="text-center text-gray-500 p-8">この月のデータはありません。</p>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">店名・サービス別支出</h3>
+      <p className="text-center text-gray-500 dark:text-gray-400 p-8">この月のデータはありません。</p>
     </div>
   );
 
   const height = Math.max(400, storeData.length * 40);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">店名・サービス別支出</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md overflow-hidden">
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">店名・サービス別支出</h3>
       <div style={{ width: '100%', height: height, overflowX: 'auto' }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart

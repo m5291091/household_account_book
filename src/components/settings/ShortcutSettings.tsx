@@ -57,11 +57,11 @@ const ShortcutSettings = () => {
   if (loading) return <p>読み込み中...</p>;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">ショートカットキー設定</h2>
       
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">プラットフォーム</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">プラットフォーム</label>
         <div className="flex space-x-4">
           <label className="flex items-center">
             <input
@@ -91,10 +91,10 @@ const ShortcutSettings = () => {
           <div key={shortcut.action} className="flex items-center justify-between border-b pb-2">
             <div>
               <p className="font-medium">{shortcut.label}</p>
-              <p className="text-xs text-gray-500">{shortcut.description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{shortcut.description}</p>
             </div>
             <div className="flex items-center">
-              <span className="text-gray-500 mr-2">{modifier}</span>
+              <span className="text-gray-500 dark:text-gray-400 mr-2">{modifier}</span>
               <input
                 type="text"
                 value={customKeys[shortcut.action] || shortcut.defaultKey}

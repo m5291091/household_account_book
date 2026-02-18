@@ -192,8 +192,8 @@ const YearlyReportPage = () => {
   }
 
   const renderPieChart = (title: string, data: { name: string, value: number }[]) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">{title}</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">{title}</h3>
       <div style={{ width: '100%', height: 400 }}>
         {data.length > 0 ? (
           <ResponsiveContainer>
@@ -217,7 +217,7 @@ const YearlyReportPage = () => {
               <Legend />
             </PieChart>
           </ResponsiveContainer>
-        ) : <p className="text-center text-gray-500 h-full flex items-center justify-center">データがありません。</p>}
+        ) : <p className="text-center text-gray-500 dark:text-gray-400 h-full flex items-center justify-center">データがありません。</p>}
       </div>
     </div>
   );
@@ -228,8 +228,8 @@ const YearlyReportPage = () => {
     const height = Math.max(400, data.length * 40);
 
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">{title}</h3>
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md overflow-hidden">
+        <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">{title}</h3>
         <div style={{ width: '100%', height: height, overflowX: 'auto' }}>
           {data.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -247,7 +247,7 @@ const YearlyReportPage = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-center text-gray-500 h-full flex items-center justify-center">
+            <p className="text-center text-gray-500 dark:text-gray-400 h-full flex items-center justify-center">
               データがありません。
             </p>
           )}
@@ -272,20 +272,20 @@ const YearlyReportPage = () => {
 
           {/* --- Summary --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md text-center">
-              <h2 className="text-sm md:text-lg font-semibold text-gray-600">年間合計支出</h2>
+            <div className="bg-white dark:bg-black p-4 md:p-6 rounded-lg shadow-md text-center">
+              <h2 className="text-sm md:text-lg font-semibold text-gray-600 dark:text-gray-300">年間合計支出</h2>
               <p className="text-xl sm:text-2xl md:text-3xl font-bold text-red-500 break-words">¥{totalYearlyExpense.toLocaleString()}</p>
             </div>
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md text-center">
-              <h2 className="text-sm md:text-lg font-semibold text-gray-600">年間合計 差引支給額</h2>
+            <div className="bg-white dark:bg-black p-4 md:p-6 rounded-lg shadow-md text-center">
+              <h2 className="text-sm md:text-lg font-semibold text-gray-600 dark:text-gray-300">年間合計 差引支給額</h2>
               <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-500 break-words">¥{totalYearlyNetIncome.toLocaleString()}</p>
             </div>
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md text-center">
-              <h2 className="text-sm md:text-lg font-semibold text-gray-600">年間累積 課税合計</h2>
+            <div className="bg-white dark:bg-black p-4 md:p-6 rounded-lg shadow-md text-center">
+              <h2 className="text-sm md:text-lg font-semibold text-gray-600 dark:text-gray-300">年間累積 課税合計</h2>
               <p className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-600 break-words">¥{totalYearlyTax.toLocaleString()}</p>
             </div>
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md text-center">
-              <h2 className="text-sm md:text-lg font-semibold text-gray-600">年間収支</h2>
+            <div className="bg-white dark:bg-black p-4 md:p-6 rounded-lg shadow-md text-center">
+              <h2 className="text-sm md:text-lg font-semibold text-gray-600 dark:text-gray-300">年間収支</h2>
               <p className={`text-xl sm:text-2xl md:text-3xl font-bold break-words ${totalYearlyNetIncome - totalYearlyExpense >= 0 ? 'text-blue-500' : 'text-red-600'}`}>
                 ¥{(totalYearlyNetIncome - totalYearlyExpense).toLocaleString()}
               </p>
@@ -293,8 +293,8 @@ const YearlyReportPage = () => {
           </div>
 
           {/* --- Monthly Comparison --- */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">月別収支の推移</h2>
+          <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">月別収支の推移</h2>
             <div style={{ width: '100%', height: 400 }}>
               <ResponsiveContainer>
                 <LineChart data={monthlyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -322,10 +322,10 @@ const YearlyReportPage = () => {
           
           {/* --- Monthly Income Breakdown --- */}
           <div className="space-y-8">
-            <h2 className="text-3xl font-bold text-gray-800 mt-12 border-b pb-2">月別収入内訳の推移</h2>
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-12 border-b pb-2">月別収入内訳の推移</h2>
             {monthlyIncomeByCategoryData.map(([category, data]) => (
-              <div key={category} className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-2xl font-bold mb-4 text-gray-700">{category}</h3>
+              <div key={category} className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+                <h3 className="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-200">{category}</h3>
                 <div style={{ width: '100%', height: 400 }}>
                   <ResponsiveContainer>
                     <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -355,7 +355,7 @@ const YearlyReportPage = () => {
 
           {/* --- Pie Chart Grid --- */}
           <div className="mt-12">
-            <h2 className="text-3xl font-bold text-gray-800 border-b pb-2 mb-8">年間サマリー</h2>
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 border-b pb-2 mb-8">年間サマリー</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {renderPieChart('カテゴリー別年間合計支出', expenseByCategory)}
               {renderPieChart('収入のカテゴリー別年間合計', incomeByCategory)}

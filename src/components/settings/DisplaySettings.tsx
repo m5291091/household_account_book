@@ -39,10 +39,10 @@ const DisplaySettings = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">表示設定</h2>
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           カレンダーのチェック時の背景色
         </label>
         <div className="flex items-center space-x-4">
@@ -50,9 +50,9 @@ const DisplaySettings = () => {
             type="color"
             value={checkColor}
             onChange={(e) => setCheckColor(e.target.value)}
-            className="h-10 w-20 border border-gray-300 rounded p-1"
+            className="h-10 w-20 border border-gray-300 dark:border-gray-600 rounded p-1"
           />
-          <span className="text-gray-600">{checkColor}</span>
+          <span className="text-gray-600 dark:text-gray-300">{checkColor}</span>
         </div>
       </div>
       <button

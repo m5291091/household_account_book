@@ -259,44 +259,44 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">{isEditMode ? '支出を編集' : '支出を記録'}</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">{isEditMode ? '支出を編集' : '支出を記録'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700">日付</label>
-          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">日付</label>
+          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">金額</label>
-          <input ref={amountRef} type="text" name="amount" id="amount" value={formData.amount} onChange={handleChange} onBlur={handleAmountBlur} onKeyDown={handleKeyDown} placeholder="0 または 100+50" required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-200 dark:text-gray-300">金額</label>
+          <input ref={amountRef} type="text" name="amount" id="amount" value={formData.amount} onChange={handleChange} onBlur={handleAmountBlur} onKeyDown={handleKeyDown} placeholder="0 または 100+50" required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"/>
         </div>
         <div>
-          <label htmlFor="store" className="block text-sm font-medium text-gray-700">店名・サービス名</label>
-          <input ref={storeRef} type="text" name="store" id="store" value={formData.store} onChange={handleChange} onKeyDown={handleKeyDown} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <label htmlFor="store" className="block text-sm font-medium text-gray-700 dark:text-gray-200">店名・サービス名</label>
+          <input ref={storeRef} type="text" name="store" id="store" value={formData.store} onChange={handleChange} onKeyDown={handleKeyDown} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
         </div>
         <div>
-          <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700">カテゴリー</label>
+          <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 dark:text-gray-200">カテゴリー</label>
           <div className="flex gap-2">
-            <select ref={categoryRef} name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            <select ref={categoryRef} name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
               <option value="">選択してください</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+            <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold">+</button>
           </div>
         </div>
         <div>
-          <label htmlFor="paymentMethodId" className="block text-sm font-medium text-gray-700">支払い方法</label>
+          <label htmlFor="paymentMethodId" className="block text-sm font-medium text-gray-700 dark:text-gray-200">支払い方法</label>
           <div className="flex gap-2">
-            <select ref={paymentMethodRef} name="paymentMethodId" id="paymentMethodId" value={formData.paymentMethodId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            <select ref={paymentMethodRef} name="paymentMethodId" id="paymentMethodId" value={formData.paymentMethodId} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
               <option value="">選択してください</option>
               {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button type="button" onClick={() => setIsPaymentMethodModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold">+</button>
+            <button type="button" onClick={() => setIsPaymentMethodModalOpen(true)} className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold">+</button>
           </div>
         </div>
         <div>
-          <label htmlFor="memo" className="block text-sm font-medium text-gray-700">メモ</label>
-          <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+          <label htmlFor="memo" className="block text-sm font-medium text-gray-700 dark:text-gray-200">メモ</label>
+          <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
         </div>
         <div className="flex items-center">
           <input
@@ -305,9 +305,9 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
             type="checkbox"
             checked={isIrregular}
             onChange={(e) => setIsIrregular(e.target.checked)}
-            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
           />
-          <label htmlFor="isIrregular" className="ml-2 block text-sm text-gray-900">
+          <label htmlFor="isIrregular" className="ml-2 block text-sm text-gray-900 dark:text-white">
             イレギュラー支出 (カレンダーの日付に紐付けない)
           </label>
         </div>
@@ -318,7 +318,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
             {isEditMode ? '更新する' : '記録する'}
           </button>
           {isEditMode && onFormClose && (
-            <button type="button" onClick={onFormClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">
+            <button type="button" onClick={onFormClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-md">
               キャンセル
             </button>
           )}

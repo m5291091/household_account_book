@@ -58,7 +58,7 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md animate-pulse">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
         <div className="h-64 bg-gray-200 rounded"></div>
       </div>
@@ -66,8 +66,8 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">収入 vs 支出</h3>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">収入 vs 支出</h3>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart layout="vertical" data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />

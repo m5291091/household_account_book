@@ -73,7 +73,7 @@ const BudgetStatus = ({ month }: BudgetStatusProps) => {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md animate-pulse">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
         <div className="h-64 bg-gray-200 rounded"></div>
       </div>
@@ -82,16 +82,16 @@ const BudgetStatus = ({ month }: BudgetStatusProps) => {
   
   if (chartData.length === 0) {
     return (
-       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">今月の予算状況</h2>
-        <p className="text-gray-500">予算が設定されているカテゴリーはありません。</p>
+       <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">今月の予算状況</h2>
+        <p className="text-gray-500 dark:text-gray-400">予算が設定されているカテゴリーはありません。</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">今月の予算状況</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">今月の予算状況</h2>
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <BarChart

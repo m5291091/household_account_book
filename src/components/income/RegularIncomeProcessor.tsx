@@ -107,17 +107,17 @@ const RegularIncomeProcessor = ({ month }: Props) => {
   if (loading) return <p>読み込み中...</p>;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">今月の定期収入</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">今月の定期収入</h2>
       {error && <p className="text-red-500">{error}</p>}
       {upcomingIncomes.length === 0 ? (
-        <p className="text-gray-500">今月受け取る予定の定期収入はありません。</p>
+        <p className="text-gray-500 dark:text-gray-400">今月受け取る予定の定期収入はありません。</p>
       ) : (
         <ul className="space-y-3">
           {upcomingIncomes.map(template => {
             const paymentDate = template.nextPaymentDate.toDate();
             return (
-              <li key={template.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <li key={template.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-md">
                 <div>
                   <p className="font-semibold">{template.name}</p>
                   <p className="text-sm">

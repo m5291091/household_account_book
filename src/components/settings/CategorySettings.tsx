@@ -86,7 +86,7 @@ const CategorySettings = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">カテゴリー管理</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <form onSubmit={handleAddCategory} className="mb-4 flex">
@@ -95,7 +95,7 @@ const CategorySettings = () => {
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
           placeholder="新しいカテゴリー名"
-          className="flex-grow shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          className="flex-grow shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline"
         />
         <button type="submit" className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
           追加
@@ -106,7 +106,7 @@ const CategorySettings = () => {
       ) : (
         <ul className="space-y-3">
           {categories.map((category) => (
-            <li key={category.id} className="p-3 border rounded-lg bg-gray-50">
+            <li key={category.id} className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
               <div className="flex justify-between items-center">
                 <span className="font-medium">{category.name}</span>
                 <button
@@ -123,7 +123,7 @@ const CategorySettings = () => {
                   value={budgetValues[category.id] || ''}
                   onChange={e => handleBudgetChange(category.id, e.target.value)}
                   placeholder="月間予算額"
-                  className="flex-grow shadow-sm appearance-none border rounded py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="flex-grow shadow-sm appearance-none border rounded py-1 px-2 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline"
                 />
                 <button onClick={() => handleBudgetSave(category.id)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm">
                   保存

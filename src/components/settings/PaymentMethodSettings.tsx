@@ -173,23 +173,23 @@ const PaymentMethodSettings = () => {
   const bankAccounts = accounts.filter(a => a.type === 'bank');
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-lg space-y-12">
+    <div className="bg-white dark:bg-black p-8 rounded-xl shadow-lg space-y-12">
       {error && <p className="text-red-500 mb-4 font-bold">{error}</p>}
 
       {/* Account Settings Section */}
       <section>
-        <h2 className="text-2xl font-bold mb-6 border-b-2 pb-3 text-gray-800">口座・カード設定</h2>
-        <p className="text-base text-gray-600 mb-6">資産シミュレーションの元となる口座やクレジットカードを登録します。</p>
+        <h2 className="text-2xl font-bold mb-6 border-b-2 pb-3 text-gray-800 dark:text-gray-100">口座・カード設定</h2>
+        <p className="text-base text-gray-600 dark:text-gray-300 mb-6">資産シミュレーションの元となる口座やクレジットカードを登録します。</p>
         
-        <form onSubmit={handleSubmitAccount} className="mb-8 space-y-6 border-2 p-6 rounded-xl bg-gray-50">
+        <form onSubmit={handleSubmitAccount} className="mb-8 space-y-6 border-2 p-6 rounded-xl bg-gray-50 dark:bg-gray-900">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-base font-bold text-gray-700 mb-2">名称</label>
+              <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">名称</label>
               <input name="name" value={accountForm.name} onChange={handleAccountChange} placeholder="例: 三菱UFJ銀行, 楽天カード" className="w-full p-3 border-2 rounded-lg text-lg" required />
             </div>
             <div>
-              <label className="block text-base font-bold text-gray-700 mb-2">種類</label>
-              <select name="type" value={accountForm.type} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+              <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">種類</label>
+              <select name="type" value={accountForm.type} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white dark:bg-black">
                 <option value="bank">銀行口座</option>
                 <option value="credit_card">クレジットカード</option>
                 <option value="cash">現金</option>
@@ -198,7 +198,7 @@ const PaymentMethodSettings = () => {
             </div>
             {accountForm.type !== 'credit_card' && (
               <div>
-                <label className="block text-base font-bold text-gray-700 mb-2">現在残高</label>
+                <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">現在残高</label>
                 <input type="number" name="balance" value={accountForm.balance} onChange={handleAccountChange} placeholder="円" className="w-full p-3 border-2 rounded-lg text-lg" required />
               </div>
             )}
@@ -207,32 +207,32 @@ const PaymentMethodSettings = () => {
           {accountForm.type === 'credit_card' && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 border-t-2 pt-6 mt-4">
               <div>
-                <label className="block text-base font-bold text-gray-700 mb-2">締め日</label>
-                <select name="closingDay" value={accountForm.closingDay} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+                <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">締め日</label>
+                <select name="closingDay" value={accountForm.closingDay} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white dark:bg-black">
                   <option value="">選択</option>
                   {[...Array(28)].map((_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
                   <option value="99">末日</option>
                 </select>
               </div>
               <div>
-                <label className="block text-base font-bold text-gray-700 mb-2">引き落とし月</label>
-                <select name="paymentMonthOffset" value={accountForm.paymentMonthOffset} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+                <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">引き落とし月</label>
+                <select name="paymentMonthOffset" value={accountForm.paymentMonthOffset} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white dark:bg-black">
                   <option value="0">当月</option>
                   <option value="1">翌月</option>
                   <option value="2">翌々月</option>
                 </select>
               </div>
               <div>
-                <label className="block text-base font-bold text-gray-700 mb-2">引き落とし日</label>
-                <select name="paymentDay" value={accountForm.paymentDay} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+                <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">引き落とし日</label>
+                <select name="paymentDay" value={accountForm.paymentDay} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white dark:bg-black">
                   <option value="">選択</option>
                   {[...Array(28)].map((_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
                   <option value="99">末日</option>
                 </select>
               </div>
               <div>
-                <label className="block text-base font-bold text-gray-700 mb-2">引き落とし口座</label>
-                <select name="linkedBankAccountId" value={accountForm.linkedBankAccountId} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white">
+                <label className="block text-base font-bold text-gray-700 dark:text-gray-200 mb-2">引き落とし口座</label>
+                <select name="linkedBankAccountId" value={accountForm.linkedBankAccountId} onChange={handleAccountChange} className="w-full p-3 border-2 rounded-lg text-lg bg-white dark:bg-black">
                   <option value="">選択してください</option>
                   {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
@@ -250,7 +250,7 @@ const PaymentMethodSettings = () => {
 
         <ul className="space-y-4 max-h-80 overflow-y-auto">
           {accounts.map(acc => (
-            <li key={acc.id} className="flex justify-between items-center p-4 border-2 rounded-xl hover:bg-gray-50 transition">
+            <li key={acc.id} className="flex justify-between items-center p-4 border-2 rounded-xl hover:bg-gray-50 dark:bg-gray-900 transition">
               <div>
                 <div className="flex items-center space-x-3 mb-1">
                   <span className={`text-sm px-3 py-1 rounded-full text-white font-bold ${
@@ -262,9 +262,9 @@ const PaymentMethodSettings = () => {
                   </span>
                   <span className="font-bold text-lg">{acc.name}</span>
                 </div>
-                {acc.type !== 'credit_card' && <p className="text-base text-gray-600 ml-1">残高: ¥{acc.balance.toLocaleString()}</p>}
+                {acc.type !== 'credit_card' && <p className="text-base text-gray-600 dark:text-gray-300 ml-1">残高: ¥{acc.balance.toLocaleString()}</p>}
                 {acc.type === 'credit_card' && (
-                  <p className="text-sm text-gray-500 ml-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 ml-1">
                     {acc.closingDay === 99 ? '末' : acc.closingDay}日締め / {acc.paymentDay === 99 ? '末' : acc.paymentDay}日払い
                     {acc.linkedBankAccountId && ` (-> ${accounts.find(a => a.id === acc.linkedBankAccountId)?.name})`}
                   </p>
@@ -281,8 +281,8 @@ const PaymentMethodSettings = () => {
 
       {/* Payment Method Settings Section */}
       <section>
-        <h2 className="text-2xl font-bold mb-6 border-b-2 pb-3 text-gray-800">支払い方法の紐付け</h2>
-        <p className="text-base text-gray-600 mb-6">記録時に選択する「支払い方法」と、上記で設定した「口座・カード」を紐付けます。</p>
+        <h2 className="text-2xl font-bold mb-6 border-b-2 pb-3 text-gray-800 dark:text-gray-100">支払い方法の紐付け</h2>
+        <p className="text-base text-gray-600 dark:text-gray-300 mb-6">記録時に選択する「支払い方法」と、上記で設定した「口座・カード」を紐付けます。</p>
 
         <form onSubmit={handleAddPaymentMethod} className="mb-8 flex gap-4">
           <input
@@ -290,7 +290,7 @@ const PaymentMethodSettings = () => {
             value={newPaymentMethod}
             onChange={(e) => setNewPaymentMethod(e.target.value)}
             placeholder="新しい支払い方法名 (例: メインカード)"
-            className="flex-grow shadow-md appearance-none border-2 rounded-lg py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-blue-500 text-lg"
+            className="flex-grow shadow-md appearance-none border-2 rounded-lg py-3 px-4 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:border-blue-500 text-lg"
           />
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition">
             追加
@@ -302,17 +302,17 @@ const PaymentMethodSettings = () => {
                     <ul className="space-y-4">
                       {paymentMethods.map((method) => {
                         return (
-                          <li key={method.id} className="flex flex-col md:flex-row md:justify-between md:items-center p-4 border-2 rounded-xl hover:bg-gray-50 transition gap-4">
+                          <li key={method.id} className="flex flex-col md:flex-row md:justify-between md:items-center p-4 border-2 rounded-xl hover:bg-gray-50 dark:bg-gray-900 transition gap-4">
                             <div className="flex items-center min-w-[200px]">
                               <span className="font-bold text-xl">{method.name}</span>
                             </div>
                             
                             <div className="flex items-center flex-grow gap-4">
-                              <span className="text-gray-500 font-bold whitespace-nowrap">紐付け先:</span>
+                              <span className="text-gray-500 dark:text-gray-400 font-bold whitespace-nowrap">紐付け先:</span>
                               <select
                                 value={method.linkedAccountId || ''}
                                 onChange={(e) => handleUpdateLink(method.id, e.target.value)}
-                                className="flex-grow p-2 border-2 rounded-lg bg-white text-base focus:border-blue-500 cursor-pointer"
+                                className="flex-grow p-2 border-2 rounded-lg bg-white dark:bg-black text-base focus:border-blue-500 cursor-pointer"
                               >
                                 <option value="">(未連携)</option>
                                 {accounts.map(acc => (

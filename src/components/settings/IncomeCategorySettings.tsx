@@ -64,7 +64,7 @@ const IncomeCategorySettings = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">収入カテゴリー管理</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <form onSubmit={handleAddCategory} className="mb-4 flex">
@@ -73,7 +73,7 @@ const IncomeCategorySettings = () => {
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
           placeholder="新しい収入カテゴリー名"
-          className="flex-grow shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          className="flex-grow shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline"
         />
         <button type="submit" className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
           追加

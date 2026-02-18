@@ -354,23 +354,23 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
     switch (bulkEditField) {
       case 'categoryId':
         return (
-          <select value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 rounded-md">
+          <select value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md">
             <option value="">カテゴリーを選択</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         );
       case 'paymentMethodId':
         return (
-          <select value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 rounded-md">
+          <select value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md">
             <option value="">支払方法を選択</option>
             {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         );
       case 'date':
-        return <input type="date" value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 rounded-md" />;
+        return <input type="date" value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md" />;
       case 'store':
       case 'memo':
-        return <input type="text" value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 rounded-md" placeholder="新しい値を入力" />;
+        return <input type="text" value={bulkEditValue} onChange={e => setBulkEditValue(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md" placeholder="新しい値を入力" />;
       default:
         return null;
     }
@@ -386,43 +386,43 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
         {headerAction}
       </div>
 
       {viewMode === 'list' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 border rounded-md bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 border rounded-md bg-gray-50 dark:bg-gray-900">
             <input 
               type="text"
               placeholder="店名・メモで検索..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md md:col-span-2"
+              className="p-2 border border-gray-300 dark:border-gray-600 rounded-md md:col-span-2"
             />
             <div className="grid grid-cols-2 gap-2">
-              <select value={selectedPaymentMethod} onChange={e => setSelectedPaymentMethod(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full">
+              <select value={selectedPaymentMethod} onChange={e => setSelectedPaymentMethod(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full">
                 <option value="">すべての支払方法</option>
                 {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
               </select>
-              <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full">
+              <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full">
                 <option value="">すべてのカテゴリー</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex items-center space-x-2">
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full"/>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full"/>
               <span>-</span>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-gray-300 rounded-md w-full"/>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full"/>
             </div>
           </div>
 
           {selectedIds.length > 0 && (
             <div className="mb-4 p-4 border rounded-md bg-yellow-50 flex items-center gap-4 flex-wrap">
               <span className="font-bold">{selectedIds.length}件選択中</span>
-              <select value={bulkEditField} onChange={e => setBulkEditField(e.target.value as BulkEditField)} className="p-2 border border-gray-300 rounded-md">
+              <select value={bulkEditField} onChange={e => setBulkEditField(e.target.value as BulkEditField)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md">
                 <option value="categoryId">カテゴリー</option>
                 <option value="paymentMethodId">支払方法</option>
                 <option value="store">店名</option>
@@ -437,41 +437,41 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
           )}
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <input type="checkbox" 
                       checked={selectedIds.length > 0 && selectedIds.length === filteredExpenses.length}
                       onChange={handleSelectAll}
-                      className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      className="h-4 w-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">内容</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">金額</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支払方法</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">アクション</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">日付</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">内容</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">金額</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">支払方法</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">アクション</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredExpenses.map(expense => (
                   <tr key={expense.id} className={selectedIds.includes(expense.id) ? 'bg-yellow-100' : ''}>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <input type="checkbox"
                         checked={selectedIds.includes(expense.id)}
                         onChange={() => handleSelect(expense.id)}
-                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        className="h-4 w-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded"
                       />
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{format(expense.date.toDate(), 'M/d')}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{format(expense.date.toDate(), 'M/d')}</td>
                     <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-gray-900">{expense.store || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{expense.store || 'N/A'}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'}</div>
                       {expense.memo && <div className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</div>}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">¥{expense.amount.toLocaleString()}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                        <button onClick={() => handleCopy(expense)} className="text-green-600 hover:text-green-800 mr-2">複製</button>
                        <Link href={`/dashboard/edit-expense/${expense.id}`} className="text-blue-600 hover:text-blue-800 mr-2">編集</Link>
@@ -486,9 +486,9 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
       )}
 
       {viewMode === 'monthly_grid' && (
-        <div className="grid grid-cols-7 border-t border-l border-gray-300">
+        <div className="grid grid-cols-7 border-t border-l border-gray-300 dark:border-gray-600">
           {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
-             <div key={d} className={`p-2 border-r border-b border-gray-300 font-bold text-center bg-gray-100 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>{d}</div>
+             <div key={d} className={`p-2 border-r border-b border-gray-300 dark:border-gray-600 font-bold text-center bg-gray-100 dark:bg-gray-800 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>{d}</div>
           ))}
           {calendarDays.map((date, i) => {
              const dailyExpenses = allMonthExpenses.filter(e => isSameDay(e.date.toDate(), date));
@@ -500,7 +500,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
              return (
                <div 
                  key={i} 
-                 className={`p-2 border-r border-b border-gray-300 min-h-[100px] hover:bg-gray-50 cursor-pointer transition-colors ${!isCurrentMonth ? 'text-gray-400' : ''}`}
+                 className={`p-2 border-r border-b border-gray-300 dark:border-gray-600 min-h-[100px] hover:bg-gray-50 dark:bg-gray-900 cursor-pointer transition-colors ${!isCurrentMonth ? 'text-gray-400' : ''}`}
                  style={{ backgroundColor: isChecked ? checkColor : (isCurrentMonth ? 'white' : '#f9fafb') }} 
                  onClick={(e) => handleCellClick(e, dailyExpenses, format(date, 'M月d日の支出'))}
                  onDoubleClick={(e) => {
@@ -514,7 +514,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                  {total > 0 && <div className="text-sm font-bold text-red-600 mt-2 text-right">¥{total.toLocaleString()}</div>}
                  <div className="mt-1 space-y-1">
                    {dailyExpenses.slice(0, 3).map(exp => (
-                     <div key={exp.id} className="text-xs truncate text-gray-600 bg-gray-100 rounded px-1">{exp.store || '支出'}</div>
+                     <div key={exp.id} className="text-xs truncate text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded px-1">{exp.store || '支出'}</div>
                    ))}
                    {dailyExpenses.length > 3 && <div className="text-xs text-gray-400 text-center">他{dailyExpenses.length - 3}件</div>}
                  </div>
@@ -529,7 +529,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
         <div className="overflow-x-auto relative z-0">
           <table className="min-w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
-              <tr className="bg-gray-100">
+              <tr className="bg-gray-100 dark:bg-gray-800">
                 <th style={{ border: '1px solid #A9A9A9', padding: '8px', position: 'sticky', left: 0, backgroundColor: '#F3F4F6', zIndex: 10 }}>支払方法</th>
                 {monthDays.map(day => {
                   const date = new Date(month.getFullYear(), month.getMonth(), day);
@@ -563,7 +563,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={handleDragOver}
                     onDrop={() => handleDrop(index)}
-                    className="cursor-move hover:bg-gray-50 transition-colors"
+                    className="cursor-move hover:bg-gray-50 dark:bg-gray-900 transition-colors"
                   >
                     <td style={{ border: '1px solid #A9A9A9', padding: '8px', fontWeight: '600', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 10 }}>{pm.name}</td>
                     {monthDays.map(day => {
@@ -629,17 +629,17 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
           {popover.visible && createPortal(
             <div ref={popoverRef} style={popover.style} className="p-4 rounded-lg shadow-xl border w-80">
               <h3 className="text-md font-bold mb-2">{popover.title}</h3>
-              <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
+              <ul className="divide-y divide-gray-200 dark:divide-gray-700 max-h-60 overflow-y-auto">
                 {popover.expenses.map(expense => (
                   <li key={expense.id} className="py-2">
                     <div className="flex justify-between items-center">
                       <div className="flex-grow">
                         <div className="flex items-center">
-                          <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2"/>
+                          <input type="checkbox" checked={!!expense.isChecked} onChange={() => handleToggleCheck(expense)} className="h-4 w-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded mr-2"/>
                           <div>
                             <p className="text-sm font-semibold">¥{expense.amount.toLocaleString()}</p>
-                            <p className="text-xs text-gray-600">{expense.store || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">{expense.store || 'N/A'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
                             {expense.memo && <p className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</p>}
                           </div>
                         </div>

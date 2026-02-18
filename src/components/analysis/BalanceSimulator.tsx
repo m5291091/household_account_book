@@ -188,24 +188,24 @@ const BalanceSimulator = () => {
     return Array.from(lastDayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [simulationData]);
 
-  if (loading) return <div className="p-8 text-center text-gray-500">シミュレーションデータを読み込み中...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500 dark:text-gray-400">シミュレーションデータを読み込み中...</div>;
 
   const bankAccounts = accounts.filter(a => a.type === 'bank');
 
   return (
     <div className="space-y-8">
       {/* Current Balances Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">現在の口座残高</h2>
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">現在の口座残高</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {bankAccounts.length === 0 ? (
-            <p className="text-gray-500">銀行口座が登録されていません。</p>
+            <p className="text-gray-500 dark:text-gray-400">銀行口座が登録されていません。</p>
           ) : (
             bankAccounts.map(account => (
-              <div key={account.id} className="border rounded-lg p-4 bg-gray-50 flex justify-between items-center">
+              <div key={account.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
                 <div>
-                  <p className="font-semibold text-gray-700">{account.name}</p>
-                  <p className="text-xs text-gray-500">銀行口座</p>
+                  <p className="font-semibold text-gray-700 dark:text-gray-200">{account.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">銀行口座</p>
                 </div>
                 <p className="text-xl font-bold text-indigo-600">
                   ¥{Number(account.balance).toLocaleString()}
@@ -227,17 +227,17 @@ const BalanceSimulator = () => {
       </div>
 
       {/* Simulation Chart Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">資産残高シミュレーション</h2>
-          <select value={simulationMonths} onChange={e => setSimulationMonths(Number(e.target.value))} className="p-2 border rounded bg-white">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">資産残高シミュレーション</h2>
+          <select value={simulationMonths} onChange={e => setSimulationMonths(Number(e.target.value))} className="p-2 border rounded bg-white dark:bg-black">
             <option value={3}>3ヶ月後まで</option>
             <option value={6}>6ヶ月後まで</option>
             <option value={12}>1年後まで</option>
           </select>
         </div>
 
-        <div className="mb-4 text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-100">
+        <div className="mb-4 text-sm text-gray-600 dark:text-gray-300 bg-blue-50 p-3 rounded border border-blue-100">
           <ul className="list-disc list-inside space-y-1">
             <li>銀行口座と現金の合計残高の推移予測です。</li>
             <li>クレジットカード払いの支出は、設定された引き落とし日に銀行口座から減算されます。</li>
@@ -284,28 +284,28 @@ const BalanceSimulator = () => {
 
         {/* Monthly Projection Table */}
         <div className="mt-8 overflow-x-auto">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">月次推移予測 (月末時点)</h3>
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">月次推移予測 (月末時点)</h3>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">年月</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-bold">合計資産</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">年月</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">合計資産</th>
                         {bankAccounts.map(acc => (
-                            <th key={acc.id} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{acc.name}</th>
+                            <th key={acc.id} className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{acc.name}</th>
                         ))}
                     </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
                     {monthlyData.map((data, idx) => (
-                        <tr key={data.date} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                        <tr key={data.date} className={idx % 2 === 0 ? 'bg-white dark:bg-black' : 'bg-gray-50 dark:bg-gray-900'}>
+                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">
                                 {data.date.substring(0, 7)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-indigo-600">
                                 ¥{data.totalBankBalance.toLocaleString()}
                             </td>
                             {bankAccounts.map(acc => (
-                                <td key={acc.id} className="px-6 py-4 whitespace-nowrap text-right text-gray-700">
+                                <td key={acc.id} className="px-6 py-4 whitespace-nowrap text-right text-gray-700 dark:text-gray-200">
                                     ¥{data[acc.id]?.toLocaleString() || '-'}
                                 </td>
                             ))}

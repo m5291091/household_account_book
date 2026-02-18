@@ -140,20 +140,20 @@ const SecuritySettings = () => {
   if (loading) return <div>読み込み中...</div>;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">セキュリティ設定</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">セキュリティ設定</h2>
       
       <div className="border-b pb-6 mb-6">
         <div className="flex justify-between items-center mb-4">
             <div>
-                <h3 className="text-lg font-semibold text-gray-700">シミュレーション機能の保護</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">シミュレーション機能の保護</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                     {hasSimulationPasscode 
                         ? '現在、シミュレーション機能はパスワードで保護されています。' 
                         : 'シミュレーション機能へのアクセスにパスワードを設定できます。'}
                 </p>
             </div>
-            <div className={`px-3 py-1 rounded-full text-sm font-bold ${hasSimulationPasscode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+            <div className={`px-3 py-1 rounded-full text-sm font-bold ${hasSimulationPasscode ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
                 {hasSimulationPasscode ? '保護中' : '未設定'}
             </div>
         </div>
@@ -188,8 +188,8 @@ const SecuritySettings = () => {
 
         {/* Forms */}
         {activeAction === 'set' && (
-            <form onSubmit={handleSetPasscode} className="bg-gray-50 p-4 rounded-lg mt-4 space-y-4 animate-fade-in">
-                <h4 className="font-bold text-gray-700">新規パスワード設定</h4>
+            <form onSubmit={handleSetPasscode} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg mt-4 space-y-4 animate-fade-in">
+                <h4 className="font-bold text-gray-700 dark:text-gray-200">新規パスワード設定</h4>
                 <input 
                     type="password" 
                     placeholder="新しいパスワード" 
@@ -208,14 +208,14 @@ const SecuritySettings = () => {
                 />
                 <div className="flex gap-2">
                     <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">保存</button>
-                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
+                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
                 </div>
             </form>
         )}
 
         {activeAction === 'change' && (
-            <form onSubmit={handleChangePasscode} className="bg-gray-50 p-4 rounded-lg mt-4 space-y-4 animate-fade-in">
-                <h4 className="font-bold text-gray-700">パスワード変更</h4>
+            <form onSubmit={handleChangePasscode} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg mt-4 space-y-4 animate-fade-in">
+                <h4 className="font-bold text-gray-700 dark:text-gray-200">パスワード変更</h4>
                 <input 
                     type="password" 
                     placeholder="現在のパスワード" 
@@ -242,7 +242,7 @@ const SecuritySettings = () => {
                 />
                 <div className="flex gap-2">
                     <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">更新</button>
-                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
+                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
                 </div>
             </form>
         )}
@@ -261,7 +261,7 @@ const SecuritySettings = () => {
                 />
                 <div className="flex gap-2">
                     <button type="submit" className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">解除実行</button>
-                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
+                    <button type="button" onClick={resetForm} className="bg-gray-300 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400">キャンセル</button>
                 </div>
             </form>
         )}

@@ -197,17 +197,17 @@ const RegularIncomeSettings = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md space-y-8">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">定期収入の管理</h2>
+    <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md space-y-8">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">定期収入の管理</h2>
       
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 p-6 border-2 border-indigo-100 rounded-lg bg-gray-50">
-        <h3 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 p-6 border-2 border-indigo-100 rounded-lg bg-gray-50 dark:bg-gray-900">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b pb-2 mb-4">
           {editingTemplateId ? 'テンプレートを編集' : '新規テンプレート追加'}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div>
-             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">名称 (収入源)</label>
+             <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">名称 (収入源)</label>
              <input 
                type="text" 
                name="name" 
@@ -216,11 +216,11 @@ const RegularIncomeSettings = () => {
                onChange={handleChange} 
                placeholder="例: 給料" 
                required 
-               className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+               className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
              />
            </div>
            <div>
-             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">差引支給額</label>
+             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">差引支給額</label>
              <input 
                type="number" 
                name="amount" 
@@ -229,14 +229,14 @@ const RegularIncomeSettings = () => {
                onChange={handleChange} 
                placeholder="手取り額" 
                required 
-               className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+               className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
              />
            </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div>
-             <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700 mb-1">課税合計</label>
+             <label htmlFor="totalTaxableAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">課税合計</label>
              <input 
                type="number" 
                name="totalTaxableAmount" 
@@ -244,11 +244,11 @@ const RegularIncomeSettings = () => {
                value={formData.totalTaxableAmount} 
                onChange={handleChange} 
                placeholder="所得税・住民税など" 
-               className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+               className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
              />
            </div>
            <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">カテゴリー</label>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">カテゴリー</label>
             <div className="flex gap-2">
               <select 
                 name="category" 
@@ -256,7 +256,7 @@ const RegularIncomeSettings = () => {
                 value={formData.category} 
                 onChange={handleChange} 
                 required 
-                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">カテゴリーを選択</option>
                 {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -264,7 +264,7 @@ const RegularIncomeSettings = () => {
               <button 
                 type="button" 
                 onClick={() => setIsCategoryModalOpen(true)}
-                className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold"
+                className="mt-1 px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold"
               >
                 +
               </button>
@@ -274,7 +274,7 @@ const RegularIncomeSettings = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 mb-1">次回受取日</label>
+            <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">次回受取日</label>
             <input 
               type="date" 
               id="nextPaymentDate" 
@@ -282,11 +282,11 @@ const RegularIncomeSettings = () => {
               value={formData.nextPaymentDate} 
               onChange={handleChange} 
               required 
-              className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">間隔</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">間隔</label>
             <div className="flex items-center space-x-2">
                 <input 
                 type="number" 
@@ -295,13 +295,13 @@ const RegularIncomeSettings = () => {
                 onChange={handleChange} 
                 min="1" 
                 required 
-                className="mt-1 block w-24 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="mt-1 block w-24 px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
                 <select 
                 name="frequency" 
                 value={formData.frequency} 
                 onChange={handleChange} 
-                className="mt-1 block px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="mt-1 block px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                 <option value="months">ヶ月ごと</option>
                 <option value="years">年ごと</option>
@@ -324,7 +324,7 @@ const RegularIncomeSettings = () => {
             <button 
               type="button" 
               onClick={handleCancelEdit} 
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-md shadow-sm"
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 font-bold py-3 px-4 rounded-md shadow-sm"
             >
               キャンセル
             </button>
@@ -337,7 +337,7 @@ const RegularIncomeSettings = () => {
         <div className="sticky top-4 z-10 bg-indigo-50 border border-indigo-200 p-4 rounded-lg shadow-sm animate-fade-in space-y-3">
           <div className="flex justify-between items-center">
              <div className="font-bold text-indigo-800">{selectedTemplateIds.length}件 選択中</div>
-             <button onClick={() => setSelectedTemplateIds([])} className="text-sm text-gray-500 hover:text-gray-700">選択解除</button>
+             <button onClick={() => setSelectedTemplateIds([])} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200">選択解除</button>
           </div>
           
           <div className="flex flex-col md:flex-row gap-2">
@@ -377,12 +377,12 @@ const RegularIncomeSettings = () => {
         </div>
       )}
 
-      <h3 className="text-xl font-bold pt-4 text-gray-800">登録済みテンプレート一覧</h3>
+      <h3 className="text-xl font-bold pt-4 text-gray-800 dark:text-gray-100">登録済みテンプレート一覧</h3>
       {loading ? <p>読み込み中...</p> : (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
+        <div className="bg-white dark:bg-black border rounded-lg overflow-hidden">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {templates.map(t => (
-              <li key={t.id} className={`p-4 hover:bg-gray-50 transition-colors ${selectedTemplateIds.includes(t.id) ? 'bg-indigo-50' : ''}`}>
+              <li key={t.id} className={`p-4 hover:bg-gray-50 dark:bg-gray-900 transition-colors ${selectedTemplateIds.includes(t.id) ? 'bg-indigo-50' : ''}`}>
                 <div className="flex items-center">
                     <input 
                       type="checkbox" 
@@ -393,11 +393,11 @@ const RegularIncomeSettings = () => {
                     <div className="flex-grow flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg text-gray-800">{t.name}</span>
-                          <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">{t.category}</span>
+                          <span className="font-bold text-lg text-gray-800 dark:text-gray-100">{t.name}</span>
+                          <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">{t.category}</span>
                         </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                            次回: <span className="font-medium text-gray-700">{t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}</span>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            次回: <span className="font-medium text-gray-700 dark:text-gray-200">{t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}</span>
                             <span className="mx-2 text-gray-300">|</span>
                             間隔: {t.interval}{t.frequency === 'years' ? '年' : 'ヶ月'}ごと
                         </div>
@@ -408,13 +408,13 @@ const RegularIncomeSettings = () => {
                         <div className="flex space-x-2">
                             <button 
                                 onClick={() => handleEdit(t)} 
-                                className="px-3 py-1 bg-white border border-blue-500 text-blue-600 rounded hover:bg-blue-50 text-sm transition-colors"
+                                className="px-3 py-1 bg-white dark:bg-black border border-blue-500 text-blue-600 rounded hover:bg-blue-50 text-sm transition-colors"
                             >
                                 編集
                             </button>
                             <button 
                                 onClick={() => handleDelete(t.id)} 
-                                className="px-3 py-1 bg-white border border-red-500 text-red-600 rounded hover:bg-red-50 text-sm transition-colors"
+                                className="px-3 py-1 bg-white dark:bg-black border border-red-500 text-red-600 rounded hover:bg-red-50 text-sm transition-colors"
                             >
                                 削除
                             </button>
@@ -425,7 +425,7 @@ const RegularIncomeSettings = () => {
               </li>
             ))}
             {templates.length === 0 && (
-                <li className="p-8 text-center text-gray-500">テンプレートがありません。</li>
+                <li className="p-8 text-center text-gray-500 dark:text-gray-400">テンプレートがありません。</li>
             )}
           </ul>
         </div>
