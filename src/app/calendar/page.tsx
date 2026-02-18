@@ -46,31 +46,27 @@ const CalendarPage = () => {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <RegularPaymentProcessor month={currentMonth} />
-            </div>
+          <div className="space-y-8">
+            <RegularPaymentProcessor month={currentMonth} />
             
-            <div className="space-y-8">
-              <ExpenseList 
-                month={currentMonth} 
-                onEditExpense={() => {}}
-                onCopyExpense={(data) => {
-                  console.log('Copy feature to be implemented', data);
-                  alert("コピー機能は現在調整中です。");
-                }}
-                viewMode={viewMode}
-                headerAction={<CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />}
-              />
-              
-              <ExpenseList 
-                month={subMonths(currentMonth, 1)}
-                title="先月の支出履歴"
-                onEditExpense={() => {}}
-                onCopyExpense={() => {}}
-                viewMode={viewMode}
-              />
-            </div>
+            <ExpenseList 
+              month={currentMonth} 
+              onEditExpense={() => {}}
+              onCopyExpense={(data) => {
+                console.log('Copy feature to be implemented', data);
+                alert("コピー機能は現在調整中です。");
+              }}
+              viewMode={viewMode}
+              headerAction={<CalendarViewSettings onViewModeChange={setViewMode} currentViewMode={viewMode} />}
+            />
+            
+            <ExpenseList 
+              month={subMonths(currentMonth, 1)}
+              title="先月の支出履歴"
+              onEditExpense={() => {}}
+              onCopyExpense={() => {}}
+              viewMode={viewMode}
+            />
           </div>
         </div>
       </main>
