@@ -114,9 +114,14 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
   if (loading) return <p>読み込み中...</p>;
 
+  const totalAmount = upcomingPayments.reduce((sum, t) => sum + t.amount, 0);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">今月の定期支出</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">今月の定期支出</h2>
+        <p className="text-lg font-bold text-gray-700">合計: ¥{totalAmount.toLocaleString()}</p>
+      </div>
       {error && <p className="text-red-500">{error}</p>}
       {upcomingPayments.length === 0 ? (
         <p className="text-gray-500">今月支払う予定の定期支出はありません。</p>

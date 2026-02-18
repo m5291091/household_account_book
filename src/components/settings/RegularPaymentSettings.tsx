@@ -179,16 +179,24 @@ const RegularPaymentSettings = () => {
     }
   };
 
-  // Group templates
+  // Group templates and Calculate Totals
   const groupedTemplates = new Map<string, RegularPayment[]>();
   const noGroupTemplates: RegularPayment[] = [];
+  const groupTotals = new Map<string, number>();
+  let noGroupTotal = 0;
+  let grandTotal = 0;
 
   templates.forEach(t => {
+    grandTotal += t.amount;
     if (t.groupId && groups.some(g => g.id === t.groupId)) {
       if (!groupedTemplates.has(t.groupId)) groupedTemplates.set(t.groupId, []);
       groupedTemplates.get(t.groupId)!.push(t);
+      
+      const currentGroupTotal = groupTotals.get(t.groupId) || 0;
+      groupTotals.set(t.groupId, currentGroupTotal + t.amount);
     } else {
       noGroupTemplates.push(t);
+      noGroupTotal += t.amount;
     }
   });
 
@@ -315,15 +323,22 @@ const RegularPaymentSettings = () => {
       </form>
 
       {/* List */}
-      <h3 className="text-xl font-bold pt-4">登録済みテンプレート</h3>
+      <div className="flex justify-between items-center border-b pb-2">
+        <h3 className="text-xl font-bold">登録済みテンプレート</h3>
+        <p className="text-lg font-bold text-gray-700">合計: ¥{grandTotal.toLocaleString()}</p>
+      </div>
       {loading ? <p>読み込み中...</p> : (
         <div className="space-y-6">
           {groups.map(g => {
             const groupTemplates = groupedTemplates.get(g.id);
             if (!groupTemplates || groupTemplates.length === 0) return null;
+            const groupTotal = groupTotals.get(g.id) || 0;
             return (
               <div key={g.id} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">{g.name}</div>
+                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between">
+                  <span>{g.name}</span>
+                  <span>小計: ¥{groupTotal.toLocaleString()}</span>
+                </div>
                 <ul className="divide-y">
                   {groupTemplates.map(t => (
                     <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
@@ -355,7 +370,10 @@ const RegularPaymentSettings = () => {
           {/* No Group */}
           {noGroupTemplates.length > 0 && (
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">グループなし</div>
+              <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between">
+                <span>グループなし</span>
+                <span>小計: ¥{noGroupTotal.toLocaleString()}</span>
+              </div>
               <ul className="divide-y">
                 {noGroupTemplates.map(t => (
                   <li key={t.id} className="p-3 flex items-center hover:bg-gray-50">
