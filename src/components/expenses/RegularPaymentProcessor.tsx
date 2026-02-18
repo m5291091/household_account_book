@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, query, onSnapshot, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, where, getDocs, Timestamp, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegularPayment } from '@/types/RegularPayment';
+import { RegularPaymentGroup } from '@/types/RegularPaymentGroup';
 import { getMonth, getYear, startOfMonth, endOfMonth, addMonths, addYears } from 'date-fns';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 const RegularPaymentProcessor = ({ month }: Props) => {
   const { user, loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<RegularPayment[]>([]);
+  const [groups, setGroups] = useState<RegularPaymentGroup[]>([]);
   const [upcomingPayments, setUpcomingPayments] = useState<RegularPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +34,17 @@ const RegularPaymentProcessor = ({ month }: Props) => {
       setLoading(false);
     });
 
+    const groupsQuery = query(collection(db, 'users', user.uid, 'regularPaymentGroups'), orderBy('name'));
+    const unsubGroups = onSnapshot(groupsQuery, (snapshot) => {
+      const fetchedGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RegularPaymentGroup));
+      setGroups(fetchedGroups);
+    }, err => {
+      console.error(err);
+    });
+
     return () => {
       unsubTemplates();
+      unsubGroups();
     };
   }, [user, authLoading]);
 
@@ -114,7 +125,20 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
   if (loading) return <p>読み込み中...</p>;
 
+  // Calculate totals and group items
   const totalAmount = upcomingPayments.reduce((sum, t) => sum + t.amount, 0);
+
+  const groupedPayments = new Map<string, RegularPayment[]>();
+  const noGroupPayments: RegularPayment[] = [];
+
+  upcomingPayments.forEach(t => {
+    if (t.groupId && groups.some(g => g.id === t.groupId)) {
+      if (!groupedPayments.has(t.groupId)) groupedPayments.set(t.groupId, []);
+      groupedPayments.get(t.groupId)!.push(t);
+    } else {
+      noGroupPayments.push(t);
+    }
+  });
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -126,38 +150,72 @@ const RegularPaymentProcessor = ({ month }: Props) => {
       {upcomingPayments.length === 0 ? (
         <p className="text-gray-500">今月支払う予定の定期支出はありません。</p>
       ) : (
-        <ul className="space-y-3">
-          {upcomingPayments.map(template => {
-            const textStyle = template.isChecked ? { color: 'red' } : {};
-            const paymentDate = template.nextPaymentDate.toDate();
+        <div className="space-y-6">
+          {groups.map(g => {
+            const payments = groupedPayments.get(g.id);
+            if (!payments || payments.length === 0) return null;
+            const groupTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+
             return (
-              <li key={template.id} style={textStyle} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <div>
-                  <p className="font-semibold">{template.name}</p>
-                  <p className="text-sm">
-                    {paymentDate.toLocaleDateString()} - ¥{template.amount.toLocaleString()}
-                  </p>
+              <div key={g.id} className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between items-center">
+                  <span>{g.name}</span>
+                  <span className="text-sm">小計: ¥{groupTotal.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleToggleCheck(template)}
-                    className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
-                  >
-                    {template.isChecked ? '✔' : 'チェック'}
-                  </button>
-                  <button
-                    onClick={() => handleRecordExpense(template)}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
-                  >
-                    記録する
-                  </button>
-                </div>
-              </li>
+                <ul className="divide-y">
+                  {payments.map(template => (
+                    <PaymentItem key={template.id} template={template} onToggleCheck={handleToggleCheck} onRecord={handleRecordExpense} />
+                  ))}
+                </ul>
+              </div>
             );
           })}
-        </ul>
+
+          {noGroupPayments.length > 0 && (
+            <div className="border rounded-lg overflow-hidden">
+               <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b flex justify-between items-center">
+                  <span>グループなし</span>
+                  <span className="text-sm">小計: ¥{noGroupPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
+                </div>
+              <ul className="divide-y">
+                {noGroupPayments.map(template => (
+                  <PaymentItem key={template.id} template={template} onToggleCheck={handleToggleCheck} onRecord={handleRecordExpense} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
+  );
+};
+
+const PaymentItem = ({ template, onToggleCheck, onRecord }: { template: RegularPayment, onToggleCheck: (t: RegularPayment) => void, onRecord: (t: RegularPayment) => void }) => {
+  const textStyle = template.isChecked ? { color: 'red' } : {};
+  const paymentDate = template.nextPaymentDate.toDate();
+  return (
+    <li style={textStyle} className="flex items-center justify-between p-3 hover:bg-gray-50 bg-white">
+      <div>
+        <p className="font-semibold">{template.name}</p>
+        <p className="text-sm">
+          {paymentDate.toLocaleDateString()} - ¥{template.amount.toLocaleString()}
+        </p>
+      </div>
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => onToggleCheck(template)}
+          className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
+        >
+          {template.isChecked ? '✔' : 'チェック'}
+        </button>
+        <button
+          onClick={() => onRecord(template)}
+          className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
+        >
+          記録する
+        </button>
+      </div>
+    </li>
   );
 };
 
