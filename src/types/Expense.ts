@@ -1,0 +1,32 @@
+// /Users/alphabetagamma/work/APP/household_account_book/src/types/Expense.ts
+import { Timestamp } from 'firebase/firestore';
+
+export interface CheckStatus {
+  id: string;
+  color: string;
+  label: string;
+}
+
+export interface Expense {
+  id: string;
+  date: Timestamp;
+  amount: number;
+  categoryId: string;
+  paymentMethodId: string;
+  store?: string;
+  memo?: string;
+  isChecked?: boolean;
+  checkStatusId?: string; // Newly added to support multiple statuses
+  irregularDate?: Timestamp | null; // Null means it's regular. If set, this date determines which month's budget/total it counts towards.
+}
+
+// This is for the form state before converting to Firestore types
+export interface ExpenseFormData {
+  date: string; // YYYY-MM-DD
+  amount: string;
+  categoryId: string;
+  paymentMethodId: string;
+  store: string;
+  memo: string;
+  irregularMonth: string; // YYYY-MM, empty string means not irregular
+}

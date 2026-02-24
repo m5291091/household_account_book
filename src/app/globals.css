@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-200;
+  }
+  input, select, textarea {
+    @apply dark:bg-black dark:border-gray-700 dark:text-white dark:placeholder-gray-400;
+  }
+}
+
+:root {
+  /* Fluid typography: Min 16px, Max 22px, scaling with viewport */
+  font-size: clamp(16px, 1.2vw + 12px, 22px);
+}
+
+body {
+  /* Ensure body uses the root font size */
+  font-size: 1rem;
+  line-height: 1.6;
+}
