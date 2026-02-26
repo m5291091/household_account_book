@@ -270,7 +270,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         store: formData.store.trim(),
         memo: formData.memo.trim(),
         irregularDate: formData.irregularMonth ? Timestamp.fromDate(new Date(`${formData.irregularMonth}-01`)) : null,
-        ...(receiptUrl ? { receiptUrl } : {}),
+        receiptUrl: receiptUrl || "",
       };
 
       if (isEditMode && expenseToEdit) {

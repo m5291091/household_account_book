@@ -13,6 +13,7 @@ const Header = () => {
     { name: '支出記録', href: '/transactions/expense' },
     { name: 'ダッシュボード', href: '/dashboard' },
     { name: '収入管理', href: '/transactions/income' },
+    { name: 'レシート一覧', href: '/receipts' },
     { name: '支出分析', href: '/analysis' },
     { name: 'シミュレーション', href: '/analysis/simulation' },
     { name: 'カレンダー', href: '/calendar' },
