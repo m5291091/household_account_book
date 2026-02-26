@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { db } from '@/lib/firebase/config';
+import { db, storage } from '@/lib/firebase/config';
 import { collection, addDoc, updateDoc, doc, query, onSnapshot, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Category } from '@/types/Category';
 import { PaymentMethod } from '@/types/PaymentMethod';
@@ -29,11 +30,14 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     store: '',
     memo: '',
     irregularMonth: '',
+    receiptFile: null,
+    receiptUrl: '',
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Modal states
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -49,6 +53,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
   const paymentMethodRef = useRef<HTMLSelectElement>(null);
   const memoRef = useRef<HTMLTextAreaElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormData({
@@ -59,7 +64,12 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
       store: '',
       memo: '',
       irregularMonth: '',
+      receiptFile: null,
+      receiptUrl: '',
     });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   useEffect(() => {
@@ -84,6 +94,8 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         store: expenseToEdit.store || '',
         memo: expenseToEdit.memo || '',
         irregularMonth: expenseToEdit.irregularDate ? format(expenseToEdit.irregularDate.toDate(), 'yyyy-MM') : '',
+        receiptFile: null,
+        receiptUrl: expenseToEdit.receiptUrl || '',
       });
     } else if (!initialData) {
       resetForm();
@@ -213,6 +225,19 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     setFormData(prev => ({ ...prev, paymentMethodId: docRef.id }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData(prev => ({ ...prev, receiptFile: e.target.files![0] }));
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFormData(prev => ({ ...prev, receiptFile: null, receiptUrl: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -224,6 +249,19 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     }
 
     try {
+      setIsUploading(true);
+      let receiptUrl = formData.receiptUrl || '';
+
+      if (formData.receiptFile) {
+        const file = formData.receiptFile;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.uid}-${Date.now()}.${fileExt}`;
+        const storageRef = ref(storage, `receipts/${user.uid}/${fileName}`);
+        
+        await uploadBytes(storageRef, file);
+        receiptUrl = await getDownloadURL(storageRef);
+      }
+
       const dataToSave = {
         date: Timestamp.fromDate(new Date(formData.date)),
         amount: Number(formData.amount),
@@ -232,6 +270,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         store: formData.store.trim(),
         memo: formData.memo.trim(),
         irregularDate: formData.irregularMonth ? Timestamp.fromDate(new Date(`${formData.irregularMonth}-01`)) : null,
+        ...(receiptUrl ? { receiptUrl } : {}),
       };
 
       if (isEditMode && expenseToEdit) {
@@ -255,6 +294,8 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
     } catch (err) {
       console.error(err);
       setError(isEditMode ? '支出の更新に失敗しました。' : '支出の記録に失敗しました。');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -307,14 +348,48 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
           <label htmlFor="memo" className="block text-sm font-medium text-gray-700 dark:text-gray-200">メモ</label>
           <textarea ref={memoRef} name="memo" id="memo" value={formData.memo} onChange={handleChange} onKeyDown={handleKeyDown} rows={3} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">レシート・領収書</label>
+          <div className="mt-1 flex items-center gap-4">
+            <input 
+              type="file" 
+              accept="image/*,.pdf"
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              className="block w-full text-sm text-gray-500 dark:text-gray-400
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-md file:border-0
+                file:text-sm file:font-semibold
+                file:bg-indigo-50 file:text-indigo-700
+                dark:file:bg-indigo-900 dark:file:text-indigo-200
+                hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800"
+            />
+            {(formData.receiptFile || formData.receiptUrl) && (
+              <button 
+                type="button" 
+                onClick={handleRemoveFile}
+                className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 whitespace-nowrap"
+              >
+                削除
+              </button>
+            )}
+          </div>
+          {formData.receiptUrl && !formData.receiptFile && (
+            <div className="mt-2">
+              <a href={formData.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                アップロード済みのファイルを確認
+              </a>
+            </div>
+          )}
+        </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
         <div className="flex items-center space-x-4">
-          <button ref={submitButtonRef} type="submit" id="submitButton" onKeyDown={handleKeyDown} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            {isEditMode ? '更新する' : '記録する'}
+          <button ref={submitButtonRef} type="submit" id="submitButton" onKeyDown={handleKeyDown} disabled={isUploading} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            {isUploading ? '保存中...' : (isEditMode ? '更新する' : '記録する')}
           </button>
           {isEditMode && onFormClose && (
-            <button type="button" onClick={onFormClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-md">
+            <button type="button" onClick={onFormClose} disabled={isUploading} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-md">
               キャンセル
             </button>
           )}

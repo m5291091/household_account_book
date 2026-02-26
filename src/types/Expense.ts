@@ -18,6 +18,7 @@ export interface Expense {
   isChecked?: boolean;
   checkStatusId?: string; // Newly added to support multiple statuses
   irregularDate?: Timestamp | null; // Null means it's regular. If set, this date determines which month's budget/total it counts towards.
+  receiptUrl?: string;
 }
 
 // This is for the form state before converting to Firestore types
@@ -29,4 +30,6 @@ export interface ExpenseFormData {
   store: string;
   memo: string;
   irregularMonth: string; // YYYY-MM, empty string means not irregular
+  receiptFile?: File | null;
+  receiptUrl?: string;
 }

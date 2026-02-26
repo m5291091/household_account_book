@@ -496,7 +496,10 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{format(expense.date.toDate(), 'M/d')}</td>
                     <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{expense.store || 'N/A'}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {expense.store || 'N/A'}
+                        {expense.receiptUrl && <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 hover:text-blue-700" title="レシート画像">📎</a>}
+                      </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'}</div>
                       {expense.memo && <div className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</div>}
                     </td>
@@ -767,7 +770,10 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                             ))}
                           </select>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">¥{expense.amount.toLocaleString()}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              ¥{expense.amount.toLocaleString()}
+                              {expense.receiptUrl && <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 hover:text-blue-700" title="レシート画像">📎</a>}
+                            </p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">{expense.store || 'N/A'}</p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'} / {paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</p>
                             {expense.memo && <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">メモ: {expense.memo}</p>}
