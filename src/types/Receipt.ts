@@ -1,5 +1,11 @@
 import { Timestamp } from 'firebase/firestore';
 
+export interface ReceiptFolder {
+  id: string;
+  name: string;
+  createdAt: Timestamp;
+}
+
 export interface StandaloneReceipt {
   id: string;
   fileUrl: string;
