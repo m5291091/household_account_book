@@ -1,17 +1,41 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, onSnapshot, doc, updateDoc, deleteField } from 'firebase/firestore';
+import {
+  collection, query, onSnapshot, doc, updateDoc,
+  addDoc, deleteDoc, writeBatch,
+} from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
+interface ReceiptFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  order: number;
+}
+
+type SortMode = 'custom' | 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' | 'name_asc';
+
 export default function ReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
-  const [receipts, setReceipts] = useState<Expense[]>([]);
+  const [allReceipts, setAllReceipts] = useState<Expense[]>([]);
+  const [folders, setFolders] = useState<ReceiptFolder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('custom');
+
+  // UI states
+  const [renamingReceiptId, setRenamingReceiptId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameFolderValue, setRenameFolderValue] = useState('');
+  const [movingReceiptId, setMovingReceiptId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,37 +44,178 @@ export default function ReceiptsPage() {
       return;
     }
 
-    const expensesQuery = query(collection(db, 'users', user.uid, 'expenses'));
-    
-    const unsubscribe = onSnapshot(expensesQuery, (snapshot) => {
-      const expensesWithReceipts = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Expense))
-        .filter(expense => expense.receiptUrl && expense.receiptUrl.trim() !== '')
-        .sort((a, b) => b.date.toMillis() - a.date.toMillis());
-        
-      setReceipts(expensesWithReceipts);
-      setLoading(false);
-    });
+    const unsubReceipts = onSnapshot(
+      query(collection(db, 'users', user.uid, 'expenses')),
+      (snapshot) => {
+        const expensesWithReceipts = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as Expense))
+          .filter(e => e.receiptUrl && e.receiptUrl.trim() !== '');
+        setAllReceipts(expensesWithReceipts);
+        setLoading(false);
+      }
+    );
 
-    return () => unsubscribe();
+    const unsubFolders = onSnapshot(
+      query(collection(db, 'users', user.uid, 'receiptFolders')),
+      (snapshot) => {
+        setFolders(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ReceiptFolder)));
+      }
+    );
+
+    return () => { unsubReceipts(); unsubFolders(); };
   }, [user, authLoading]);
 
+  // Breadcrumb path to current folder
+  const folderPath = useMemo(() => {
+    if (!currentFolderId) return [];
+    const path: ReceiptFolder[] = [];
+    let cur: ReceiptFolder | undefined = folders.find(f => f.id === currentFolderId);
+    while (cur) {
+      path.unshift(cur);
+      cur = cur.parentId ? folders.find(f => f.id === cur!.parentId) : undefined;
+    }
+    return path;
+  }, [currentFolderId, folders]);
+
+  // Folders directly inside the current folder
+  const currentFolders = useMemo(() =>
+    folders
+      .filter(f => f.parentId === currentFolderId)
+      .sort((a, b) => a.order - b.order),
+    [folders, currentFolderId]
+  );
+
+  // Receipts directly inside the current folder, sorted
+  const currentReceipts = useMemo(() => {
+    const filtered = allReceipts.filter(e => (e.receiptFolderId ?? null) === currentFolderId);
+    switch (sortMode) {
+      case 'date_desc':  return [...filtered].sort((a, b) => b.date.toMillis() - a.date.toMillis());
+      case 'date_asc':   return [...filtered].sort((a, b) => a.date.toMillis() - b.date.toMillis());
+      case 'amount_desc': return [...filtered].sort((a, b) => b.amount - a.amount);
+      case 'amount_asc': return [...filtered].sort((a, b) => a.amount - b.amount);
+      case 'name_asc':   return [...filtered].sort((a, b) =>
+        (a.receiptName || a.store || '').localeCompare(b.receiptName || b.store || '', 'ja'));
+      default:           return [...filtered].sort((a, b) => (a.receiptOrder ?? 0) - (b.receiptOrder ?? 0));
+    }
+  }, [allReceipts, currentFolderId, sortMode]);
+
+  // Flat list of all folders for move dropdown (recursive)
+  const buildFolderOptions = (parentId: string | null, depth: number): { id: string | null; label: string }[] => {
+    const result: { id: string | null; label: string }[] = [];
+    folders
+      .filter(f => f.parentId === parentId)
+      .sort((a, b) => a.order - b.order)
+      .forEach(f => {
+        result.push({ id: f.id, label: '\u3000'.repeat(depth) + '📁 ' + f.name });
+        result.push(...buildFolderOptions(f.id, depth + 1));
+      });
+    return result;
+  };
+  const folderOptions = useMemo(
+    () => [{ id: null, label: '📂 ルート' }, ...buildFolderOptions(null, 0)],
+    [folders]
+  );
+
+  // ── Actions ──────────────────────────────────────────────
+
+  const handleCreateFolder = async () => {
+    if (!user || !newFolderName.trim()) return;
+    const maxOrder = Math.max(-1, ...currentFolders.map(f => f.order));
+    await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
+      name: newFolderName.trim(),
+      parentId: currentFolderId,
+      order: maxOrder + 1,
+    });
+    setNewFolderName('');
+    setCreatingFolder(false);
+  };
+
+  const handleRenameFolder = async (folderId: string) => {
+    if (!user || !renameFolderValue.trim()) return;
+    await updateDoc(doc(db, 'users', user.uid, 'receiptFolders', folderId), {
+      name: renameFolderValue.trim(),
+    });
+    setRenamingFolderId(null);
+  };
+
+  const handleDeleteFolder = async (folder: ReceiptFolder) => {
+    if (!user) return;
+    const hasChildren = folders.some(f => f.parentId === folder.id);
+    const hasReceipts = allReceipts.some(e => (e.receiptFolderId ?? null) === folder.id);
+    const confirmMsg = (hasChildren || hasReceipts)
+      ? `フォルダ「${folder.name}」内にアイテムがあります。削除すると中のアイテムは親フォルダに移動します。続けますか？`
+      : `フォルダ「${folder.name}」を削除しますか？`;
+    if (!confirm(confirmMsg)) return;
+
+    const batch = writeBatch(db);
+    folders.filter(f => f.parentId === folder.id).forEach(f =>
+      batch.update(doc(db, 'users', user.uid, 'receiptFolders', f.id), { parentId: folder.parentId ?? null })
+    );
+    allReceipts.filter(e => (e.receiptFolderId ?? null) === folder.id).forEach(e =>
+      batch.update(doc(db, 'users', user.uid, 'expenses', e.id), { receiptFolderId: folder.parentId ?? null })
+    );
+    batch.delete(doc(db, 'users', user.uid, 'receiptFolders', folder.id));
+    await batch.commit();
+    if (currentFolderId === folder.id) setCurrentFolderId(folder.parentId);
+  };
+
+  const handleRenameReceipt = async (expenseId: string) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'expenses', expenseId), {
+      receiptName: renameValue.trim() || null,
+    });
+    setRenamingReceiptId(null);
+  };
+
+  const handleMoveReceipt = async (expenseId: string, targetFolderId: string | null) => {
+    if (!user) return;
+    const maxOrder = Math.max(-1, ...allReceipts
+      .filter(e => (e.receiptFolderId ?? null) === targetFolderId)
+      .map(e => e.receiptOrder ?? 0));
+    await updateDoc(doc(db, 'users', user.uid, 'expenses', expenseId), {
+      receiptFolderId: targetFolderId,
+      receiptOrder: maxOrder + 1,
+    });
+    setMovingReceiptId(null);
+  };
+
+  const handleReorderReceipts = async (idx: number, direction: 'up' | 'down') => {
+    if (!user) return;
+    const arr = currentReceipts;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= arr.length) return;
+    const batch = writeBatch(db);
+    const aOrder = arr[idx].receiptOrder ?? idx;
+    const bOrder = arr[swapIdx].receiptOrder ?? swapIdx;
+    batch.update(doc(db, 'users', user.uid, 'expenses', arr[idx].id), { receiptOrder: bOrder });
+    batch.update(doc(db, 'users', user.uid, 'expenses', arr[swapIdx].id), { receiptOrder: aOrder });
+    await batch.commit();
+  };
+
+  const handleReorderFolders = async (idx: number, direction: 'up' | 'down') => {
+    if (!user) return;
+    const arr = currentFolders;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= arr.length) return;
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', user.uid, 'receiptFolders', arr[idx].id), { order: arr[swapIdx].order });
+    batch.update(doc(db, 'users', user.uid, 'receiptFolders', arr[swapIdx].id), { order: arr[idx].order });
+    await batch.commit();
+  };
+
   const handleRemoveReceipt = async (expenseId: string) => {
-    if (!user || !confirm('このレシート画像を削除してもよろしいですか？（支出の記録は残ります）')) return;
-    
+    if (!user || !confirm('このレシート画像の添付を解除しますか？（支出の記録は残ります）')) return;
     setRemovingId(expenseId);
     try {
-      const expenseRef = doc(db, 'users', user.uid, 'expenses', expenseId);
-      await updateDoc(expenseRef, {
-        receiptUrl: "" // Firebase Storage上のファイル自体は残りますが、リンクは解除されます
-      });
-    } catch (error) {
-      console.error("Failed to remove receipt link", error);
-      alert('レシートの削除に失敗しました。');
+      await updateDoc(doc(db, 'users', user.uid, 'expenses', expenseId), { receiptUrl: '' });
+    } catch {
+      alert('削除に失敗しました。');
     } finally {
       setRemovingId(null);
     }
   };
+
+  // ── Render ────────────────────────────────────────────────
 
   if (loading || authLoading) {
     return (
@@ -61,84 +226,263 @@ export default function ReceiptsPage() {
   }
 
   if (!user) {
-    return (
-      <div className="text-center mt-20">
-        <p className="text-xl">ログインしてください</p>
-      </div>
-    );
+    return <div className="text-center mt-20"><p className="text-xl">ログインしてください</p></div>;
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">レシート・領収書一覧</h1>
-        <Link 
-          href="/transactions/expense" 
+        <Link
+          href="/transactions/expense"
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors"
         >
           支出を記録する
         </Link>
       </div>
 
-      {receipts.length === 0 ? (
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1 mb-4 text-sm flex-wrap">
+        <button
+          onClick={() => setCurrentFolderId(null)}
+          className={`hover:underline ${currentFolderId === null ? 'font-bold text-indigo-600' : 'text-gray-500 dark:text-gray-400'}`}
+        >
+          ルート
+        </button>
+        {folderPath.map(folder => (
+          <span key={folder.id} className="flex items-center gap-1">
+            <span className="text-gray-400">/</span>
+            <button
+              onClick={() => setCurrentFolderId(folder.id)}
+              className={`hover:underline ${currentFolderId === folder.id ? 'font-bold text-indigo-600' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              {folder.name}
+            </button>
+          </span>
+        ))}
+      </nav>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
+        <button
+          onClick={() => { setCreatingFolder(true); setNewFolderName(''); }}
+          className="flex items-center gap-1 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold rounded text-sm"
+        >
+          📁 新規フォルダ
+        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          <label className="text-sm text-gray-600 dark:text-gray-400">並び順:</label>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="text-sm px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+          >
+            <option value="custom">カスタム順</option>
+            <option value="date_desc">日付（新しい順）</option>
+            <option value="date_asc">日付（古い順）</option>
+            <option value="amount_desc">金額（高い順）</option>
+            <option value="amount_asc">金額（低い順）</option>
+            <option value="name_asc">名前（あいうえお順）</option>
+          </select>
+        </div>
+      </div>
+
+      {/* New folder input */}
+      {creatingFolder && (
+        <div className="mb-4 flex gap-2 items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 rounded-lg">
+          <span>📁</span>
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setCreatingFolder(false); }}
+            placeholder="フォルダ名"
+            autoFocus
+            className="flex-grow px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-sm"
+          />
+          <button onClick={handleCreateFolder} className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold rounded text-sm">作成</button>
+          <button onClick={() => setCreatingFolder(false)} className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 rounded text-sm">キャンセル</button>
+        </div>
+      )}
+
+      {/* Back button */}
+      {currentFolderId && (
+        <button
+          onClick={() => setCurrentFolderId(folderPath[folderPath.length - 2]?.id ?? null)}
+          className="mb-4 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          ← 上のフォルダへ
+        </button>
+      )}
+
+      {currentFolders.length === 0 && currentReceipts.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <p className="text-gray-500 dark:text-gray-400 text-lg">添付されたレシートはありません。</p>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">
+            {currentFolderId ? 'このフォルダは空です。' : '添付されたレシートはありません。'}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {receipts.map(expense => (
-            <div key={expense.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
-              <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
-                <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
-                  {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span className="font-semibold">PDFファイル</span>
+        <div className="space-y-8">
+
+          {/* ── Folders ── */}
+          {currentFolders.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">フォルダ</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {currentFolders.map((folder, idx) => (
+                  <div key={folder.id} className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 flex flex-col gap-2">
+                    {renamingFolderId === folder.id ? (
+                      <input
+                        type="text"
+                        value={renameFolderValue}
+                        onChange={(e) => setRenameFolderValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameFolder(folder.id); if (e.key === 'Escape') setRenamingFolderId(null); }}
+                        autoFocus
+                        className="w-full px-1 py-0.5 text-sm border border-gray-300 rounded bg-white dark:bg-black"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setCurrentFolderId(folder.id)}
+                        className="flex items-center gap-1 text-left hover:underline"
+                      >
+                        <span className="text-2xl">📁</span>
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 break-all">{folder.name}</span>
+                      </button>
+                    )}
+                    <div className="flex gap-1 justify-between mt-auto">
+                      <div className="flex gap-0.5">
+                        <button onClick={() => handleReorderFolders(idx, 'up')} disabled={idx === 0} className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
+                        <button onClick={() => handleReorderFolders(idx, 'down')} disabled={idx === currentFolders.length - 1} className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => { setRenamingFolderId(folder.id); setRenameFolderValue(folder.name); }}
+                          className="text-xs text-blue-500 hover:text-blue-700"
+                        >名前変更</button>
+                        <button
+                          onClick={() => handleDeleteFolder(folder)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >削除</button>
+                      </div>
                     </div>
-                  ) : (
-                    <img 
-                      src={expense.receiptUrl} 
-                      alt={`${expense.store || '店舗なし'}のレシート`} 
-                      className="absolute inset-0 w-full h-full object-cover group-hover:opacity-75 transition-opacity"
-                    />
-                  )}
-                </a>
+                  </div>
+                ))}
               </div>
-              
-              <div className="p-4 flex-grow flex flex-col justify-between">
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    {format(expense.date.toDate(), 'yyyy年MM月dd日')}
-                  </div>
-                  <div className="font-bold text-lg mb-1 dark:text-gray-100">
-                    ¥{expense.amount.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                    {expense.store || '(店名未登録)'}
-                  </div>
-                  {expense.memo && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">
-                      {expense.memo}
+            </section>
+          )}
+
+          {/* ── Receipts ── */}
+          {currentReceipts.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {currentReceipts.map((expense, idx) => (
+                  <div key={expense.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+
+                    {/* Thumbnail */}
+                    <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                      <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                        {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            <span className="font-semibold">PDFファイル</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={expense.receiptUrl}
+                            alt={expense.receiptName || expense.store || 'レシート'}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                          />
+                        )}
+                      </a>
                     </div>
-                  )}
-                </div>
-                
-                <div className="mt-4 pt-3 border-t dark:border-gray-700 flex justify-end">
-                  <button
-                    onClick={() => handleRemoveReceipt(expense.id)}
-                    disabled={removingId === expense.id}
-                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-                  >
-                    {removingId === expense.id ? '削除中...' : '添付を解除'}
-                  </button>
-                </div>
+
+                    <div className="p-3 flex-grow flex flex-col gap-2">
+
+                      {/* Custom name */}
+                      {renamingReceiptId === expense.id ? (
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleRenameReceipt(expense.id); if (e.key === 'Escape') setRenamingReceiptId(null); }}
+                            autoFocus
+                            placeholder="名前を入力"
+                            className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                          />
+                          <button onClick={() => handleRenameReceipt(expense.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
+                          <button onClick={() => setRenamingReceiptId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">✕</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">
+                            {expense.receiptName || expense.store || '(名前未設定)'}
+                          </span>
+                          <button
+                            title="名前を変更"
+                            onClick={() => { setRenamingReceiptId(expense.id); setRenameValue(expense.receiptName || ''); }}
+                            className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700"
+                          >✎</button>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
+                      </div>
+
+                      {/* Move to folder */}
+                      {movingReceiptId === expense.id ? (
+                        <div className="flex gap-1 items-center">
+                          <select
+                            defaultValue={expense.receiptFolderId ?? ''}
+                            onChange={(e) => handleMoveReceipt(expense.id, e.target.value === '' ? null : e.target.value)}
+                            className="flex-grow text-xs px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                          >
+                            {folderOptions.map(opt => (
+                              <option key={String(opt.id)} value={opt.id ?? ''}>{opt.label}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => setMovingReceiptId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setMovingReceiptId(expense.id)}
+                          className="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 text-left"
+                        >
+                          📁 フォルダへ移動
+                        </button>
+                      )}
+
+                      {/* Reorder (custom mode only) + remove */}
+                      <div className="flex items-center justify-between pt-1 border-t dark:border-gray-700 mt-auto">
+                        {sortMode === 'custom' ? (
+                          <div className="flex gap-0.5">
+                            <button onClick={() => handleReorderReceipts(idx, 'up')} disabled={idx === 0} title="上へ" className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
+                            <button onClick={() => handleReorderReceipts(idx, 'down')} disabled={idx === currentReceipts.length - 1} title="下へ" className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
+                          </div>
+                        ) : <span />}
+                        <button
+                          onClick={() => handleRemoveReceipt(expense.id)}
+                          disabled={removingId === expense.id}
+                          className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {removingId === expense.id ? '解除中...' : '添付を解除'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            </section>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+

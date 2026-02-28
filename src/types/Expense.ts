@@ -19,6 +19,9 @@ export interface Expense {
   checkStatusId?: string; // Newly added to support multiple statuses
   irregularDate?: Timestamp | null; // Null means it's regular. If set, this date determines which month's budget/total it counts towards.
   receiptUrl?: string;
+  receiptName?: string;        // カスタム表示名
+  receiptFolderId?: string | null; // 所属フォルダID (null = ルート)
+  receiptOrder?: number;       // カスタム並び順
 }
 
 // This is for the form state before converting to Firestore types
