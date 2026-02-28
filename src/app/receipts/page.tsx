@@ -56,8 +56,19 @@ export default function ReceiptsPage() {
   const [bulkDateInput, setBulkDateInput] = useState('');
   const [showBulkDatePicker, setShowBulkDatePicker] = useState(false);
 
+  // Linked expense popover
+  const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    if (!activePopoverId) return;
+    const handleClick = () => setActivePopoverId(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [activePopoverId]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -127,6 +138,62 @@ export default function ReceiptsPage() {
   /** Returns the date to use for a standalone receipt's month bucket. */
   const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
     r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
+
+  /** Renders the linked-expenses speech-bubble popover for an expense card. */
+  const renderLinkedExpensesPopover = (expenseId: string) => {
+    const standalone = standaloneForExpense.get(expenseId);
+    if (!standalone) return null;
+    const linkedIds = standalone.linkedExpenseIds;
+    return (
+      <div className="relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActivePopoverId(prev => prev === expenseId ? null : expenseId);
+          }}
+          className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+        >
+          🔗 {linkedIds.length}件の支出 ▾
+        </button>
+        {activePopoverId === expenseId && (
+          <div
+            className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Speech bubble arrow */}
+            <div className="absolute bottom-[-6px] left-5 w-3 h-3 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45" />
+            <div className="px-3 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">紐付けられた支出（{linkedIds.length}件）</p>
+            </div>
+            <div className="max-h-52 overflow-y-auto rounded-b-xl">
+              {linkedIds.map(eid => {
+                const e = expenseById.get(eid);
+                if (!e) return null;
+                const isCurrent = eid === expenseId;
+                return (
+                  <div
+                    key={eid}
+                    className={`px-3 py-2 text-xs flex items-center justify-between gap-2 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  >
+                    <div className="flex-grow min-w-0">
+                      <div className={`font-medium truncate flex items-center gap-1 ${isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {isCurrent && <span className="text-indigo-400">●</span>}
+                        {e.store || '(店名なし)'}
+                      </div>
+                      <div className="text-gray-400 dark:text-gray-500 mt-0.5">{format(e.date.toDate(), 'yyyy/MM/dd')} · {e.categoryId}</div>
+                    </div>
+                    <div className={`flex-shrink-0 font-semibold ${isCurrent ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      ¥{e.amount.toLocaleString()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Search helpers
   const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
@@ -783,8 +850,8 @@ export default function ReceiptsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {searchResults.map(expense => (
-                <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
-                  <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
+                  <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group rounded-t-lg overflow-hidden">
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleExistingSelect(expense.id); }}
                       className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedExistingIds.has(expense.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
@@ -813,9 +880,6 @@ export default function ReceiptsPage() {
                       <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">
                         {expense.receiptName || expense.store || '(名前未設定)'}
                       </span>
-                      {standaloneForExpense.has(expense.id) && (
-                        <span className="flex-shrink-0 text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded">🔗 紐付け</span>
-                      )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
@@ -823,6 +887,8 @@ export default function ReceiptsPage() {
                     {expense.memo && (
                       <div className="text-xs text-gray-400 dark:text-gray-500 line-clamp-2">{expense.memo}</div>
                     )}
+                    {/* Linked expenses popover */}
+                    {renderLinkedExpensesPopover(expense.id)}
                     <div className="flex justify-between items-center pt-1 border-t dark:border-gray-700 mt-auto">
                       {standaloneForExpense.has(expense.id) && (
                         <button
@@ -875,10 +941,10 @@ export default function ReceiptsPage() {
                 {currentReceipts.map((expense) => (
                   <div
                     key={expense.id}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                    className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
                   >
                     {/* Thumbnail */}
-                    <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                    <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group rounded-t-lg overflow-hidden">
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleExistingSelect(expense.id); }}
                         className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedExistingIds.has(expense.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
@@ -924,9 +990,6 @@ export default function ReceiptsPage() {
                           <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">
                             {expense.receiptName || expense.store || '(名前未設定)'}
                           </span>
-                          {standaloneForExpense.has(expense.id) && (
-                            <span className="flex-shrink-0 text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded">🔗</span>
-                          )}
                           <button
                             title="名前を変更"
                             onClick={() => { setRenamingReceiptId(expense.id); setRenameValue(expense.receiptName || ''); }}
@@ -938,6 +1001,9 @@ export default function ReceiptsPage() {
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
                       </div>
+
+                      {/* Linked expenses popover */}
+                      {renderLinkedExpensesPopover(expense.id)}
 
                       <div className="flex items-center justify-between pt-1 border-t dark:border-gray-700 mt-auto">
                         {standaloneForExpense.has(expense.id) && (
