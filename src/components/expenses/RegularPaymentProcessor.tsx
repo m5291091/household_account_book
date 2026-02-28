@@ -9,120 +9,174 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { RegularPayment } from '@/types/RegularPayment';
 import { RegularPaymentGroup } from '@/types/RegularPaymentGroup';
-import { startOfMonth, endOfMonth, addMonths, addYears } from 'date-fns';
+import { startOfMonth, endOfMonth, addMonths, addYears, isSameDay } from 'date-fns';
 
 interface Props {
   month: Date;
 }
 
 type RecordedInfo = {
-  actionId: string;
   expenseId: string;
-  prevNextPaymentDate: Timestamp;
-  name: string;
-  amount: number;
+  actionId?: string;
+  prevNextPaymentDate?: Timestamp;
 };
+
+/**
+ * Compute the expected payment date for a given template in the target month.
+ * Works backwards/forwards from nextPaymentDate using the template's frequency/interval.
+ * Returns null if no payment falls in that month.
+ */
+function getPaymentDateForMonth(template: RegularPayment, targetMonth: Date): Date | null {
+  if (!template.nextPaymentDate) return null;
+  const start = startOfMonth(targetMonth);
+  const end = endOfMonth(targetMonth);
+
+  const advance = (d: Date, n: number): Date =>
+    template.frequency === 'months'
+      ? addMonths(d, n * template.interval)
+      : addYears(d, n * template.interval);
+
+  let candidate = template.nextPaymentDate.toDate();
+  let iter = 0;
+  // Move backwards while candidate is after the target month
+  while (candidate > end && iter < 1200) { candidate = advance(candidate, -1); iter++; }
+  // Move forwards while candidate is before the target month
+  while (candidate < start && iter < 2400) { candidate = advance(candidate, 1); iter++; }
+  return (candidate >= start && candidate <= end) ? candidate : null;
+}
 
 const RegularPaymentProcessor = ({ month }: Props) => {
   const { user, loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<RegularPayment[]>([]);
   const [groups, setGroups] = useState<RegularPaymentGroup[]>([]);
-  const [upcomingPayments, setUpcomingPayments] = useState<RegularPayment[]>([]);
-  // Map<regularPaymentId, RecordedInfo> for this month's recorded (not undone) actions
+  // All templates that have a scheduled payment this month
+  const [displayPayments, setDisplayPayments] = useState<RegularPayment[]>([]);
+  // Map<regularPaymentId, RecordedInfo> — built from expenses + actions
   const [recordedMap, setRecordedMap] = useState<Map<string, RecordedInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Selection for bulk record
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [recording, setRecording] = useState(false);
 
   // Templates + groups subscription
   useEffect(() => {
     if (authLoading || !user) return;
-
-    const templatesQuery = query(collection(db, 'users', user.uid, 'regularPayments'));
-    const unsubTemplates = onSnapshot(templatesQuery, (snapshot) => {
-      const fetchedTemplates = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPayment));
-      setTemplates(fetchedTemplates);
-      setLoading(false);
-    }, err => {
-      console.error(err);
-      setError('テンプレートの読み込みに失敗しました。');
-      setLoading(false);
-    });
-
-    const groupsQuery = query(collection(db, 'users', user.uid, 'regularPaymentGroups'), orderBy('name'));
-    const unsubGroups = onSnapshot(groupsQuery, (snapshot) => {
-      setGroups(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPaymentGroup)));
-    });
-
+    const unsubTemplates = onSnapshot(
+      query(collection(db, 'users', user.uid, 'regularPayments')),
+      (snapshot) => {
+        setTemplates(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPayment)));
+        setLoading(false);
+      },
+      err => { console.error(err); setError('読み込みに失敗しました。'); setLoading(false); }
+    );
+    const unsubGroups = onSnapshot(
+      query(collection(db, 'users', user.uid, 'regularPaymentGroups'), orderBy('name')),
+      snapshot => setGroups(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPaymentGroup)))
+    );
     return () => { unsubTemplates(); unsubGroups(); };
   }, [user, authLoading]);
 
-  // Actions subscription (re-runs when month changes)
+  // Recorded state: built from expenses for this month + action docs (for undo)
+  // Handles BOTH old recordings (no action doc) and new recordings (with action doc)
   useEffect(() => {
     if (authLoading || !user) return;
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
+    const start = Timestamp.fromDate(startOfMonth(month));
+    const end = Timestamp.fromDate(endOfMonth(month));
 
-    const actionsQuery = query(
-      collection(db, 'users', user.uid, 'regularPaymentActions'),
-      where('undone', '==', false)
-    );
-    const unsubActions = onSnapshot(actionsQuery, (snapshot) => {
-      const map = new Map<string, RecordedInfo>();
-      snapshot.docs.forEach(d => {
-        const data = d.data();
-        const prevDate: Timestamp = data.prevNextPaymentDate;
-        const pd = prevDate.toDate();
-        if (pd >= start && pd <= end) {
-          map.set(data.regularPaymentId, {
-            actionId: d.id,
-            expenseId: data.expenseId,
-            prevNextPaymentDate: prevDate,
-            name: data.name,
-            amount: data.amount,
-          });
-        }
+    // These let vars are shared by both snapshot closures
+    let expenseMap = new Map<string, RecordedInfo>(); // regularPaymentId -> base info
+    let actionMap = new Map<string, { actionId: string; prevNextPaymentDate: Timestamp }>(); // expenseId -> action
+
+    const merge = () => {
+      const merged = new Map<string, RecordedInfo>();
+      expenseMap.forEach((info, regularPaymentId) => {
+        const action = actionMap.get(info.expenseId);
+        merged.set(regularPaymentId, {
+          expenseId: info.expenseId,
+          actionId: action?.actionId,
+          prevNextPaymentDate: action?.prevNextPaymentDate,
+        });
       });
-      setRecordedMap(map);
-    });
+      setRecordedMap(merged);
+    };
 
-    return () => unsubActions();
+    // Watch expenses for this month — source of truth for "recorded" state (old + new)
+    const unsubExpenses = onSnapshot(
+      query(
+        collection(db, 'users', user.uid, 'expenses'),
+        where('date', '>=', start),
+        where('date', '<=', end)
+      ),
+      snapshot => {
+        const newMap = new Map<string, RecordedInfo>();
+        snapshot.docs.forEach(d => {
+          const data = d.data();
+          if (data.regularPaymentId) {
+            newMap.set(data.regularPaymentId, { expenseId: d.id });
+          }
+        });
+        expenseMap = newMap;
+        merge();
+      }
+    );
+
+    // Watch action docs for this month — enrich with undo capability
+    const unsubActions = onSnapshot(
+      query(collection(db, 'users', user.uid, 'regularPaymentActions'), where('undone', '==', false)),
+      snapshot => {
+        const mStart = startOfMonth(month);
+        const mEnd = endOfMonth(month);
+        const newMap = new Map<string, { actionId: string; prevNextPaymentDate: Timestamp }>();
+        snapshot.docs.forEach(d => {
+          const data = d.data();
+          const pd: Date = (data.prevNextPaymentDate as Timestamp).toDate();
+          if (pd >= mStart && pd <= mEnd) {
+            newMap.set(data.expenseId, {
+              actionId: d.id,
+              prevNextPaymentDate: data.prevNextPaymentDate as Timestamp,
+            });
+          }
+        });
+        actionMap = newMap;
+        merge();
+      }
+    );
+
+    return () => { unsubExpenses(); unsubActions(); };
   }, [user, authLoading, month]);
 
+  // Compute display payments: all templates with a scheduled date in this month
   useEffect(() => {
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
-    const upcoming = templates.filter(t => {
-      if (!t.nextPaymentDate) return false;
-      const d = t.nextPaymentDate.toDate();
-      return d >= start && d <= end;
-    });
-    setUpcomingPayments(upcoming);
+    const payments = templates.filter(t => getPaymentDateForMonth(t, month) !== null);
+    setDisplayPayments(payments);
     setSelectedIds(new Set());
   }, [templates, month]);
 
-  // ── Core: record a single regular payment ──────────────────
+  // Upcoming = display payments not yet recorded
+  const upcomingPayments = displayPayments.filter(t => !recordedMap.has(t.id));
+
+  // ── Core: record a single regular payment for this month ─────
   const recordOne = async (template: RegularPayment): Promise<boolean> => {
     if (!user) return false;
-    const expenseDate = template.nextPaymentDate.toDate();
+    const paymentDate = getPaymentDateForMonth(template, month);
+    if (!paymentDate) return false;
 
     // Duplicate check
     const q = query(
       collection(db, 'users', user.uid, 'expenses'),
       where('regularPaymentId', '==', template.id),
-      where('date', '==', Timestamp.fromDate(expenseDate))
+      where('date', '==', Timestamp.fromDate(paymentDate))
     );
     const existing = await getDocs(q);
-    if (!existing.empty) return false; // already recorded
+    if (!existing.empty) return false;
 
     const prevNextPaymentDate = template.nextPaymentDate;
+    // Only advance nextPaymentDate if this payment matches the current "next" date
+    const isCurrentNext = isSameDay(paymentDate, template.nextPaymentDate.toDate());
 
     // Add expense
     const expenseRef = await addDoc(collection(db, 'users', user.uid, 'expenses'), {
-      date: Timestamp.fromDate(expenseDate),
+      date: Timestamp.fromDate(paymentDate),
       amount: template.amount,
       categoryId: template.categoryId,
       paymentMethodId: template.paymentMethodId,
@@ -132,20 +186,22 @@ const RegularPaymentProcessor = ({ month }: Props) => {
       isChecked: false,
     });
 
-    // Advance nextPaymentDate
-    const newNextPaymentDate = template.frequency === 'months'
-      ? addMonths(expenseDate, template.interval)
-      : addYears(expenseDate, template.interval);
-    await updateDoc(doc(db, 'users', user.uid, 'regularPayments', template.id), {
-      nextPaymentDate: Timestamp.fromDate(newNextPaymentDate),
-    });
+    if (isCurrentNext) {
+      const newNextPaymentDate = template.frequency === 'months'
+        ? addMonths(paymentDate, template.interval)
+        : addYears(paymentDate, template.interval);
+      await updateDoc(doc(db, 'users', user.uid, 'regularPayments', template.id), {
+        nextPaymentDate: Timestamp.fromDate(newNextPaymentDate),
+      });
+    }
 
-    // Save undo action record (triggers onSnapshot → recordedMap update)
+    // Save action doc (enables full undo)
     await addDoc(collection(db, 'users', user.uid, 'regularPaymentActions'), {
       type: 'regular_payment_record',
       regularPaymentId: template.id,
       expenseId: expenseRef.id,
       prevNextPaymentDate,
+      changedNextPaymentDate: isCurrentNext,
       name: template.name,
       amount: template.amount,
       undone: false,
@@ -155,7 +211,6 @@ const RegularPaymentProcessor = ({ month }: Props) => {
     return true;
   };
 
-  // ── Record single ───────────────────────────────────────────
   const handleRecordOne = async (template: RegularPayment) => {
     setRecording(true);
     try {
@@ -169,7 +224,6 @@ const RegularPaymentProcessor = ({ month }: Props) => {
     }
   };
 
-  // ── Bulk record ─────────────────────────────────────────────
   const handleBulkRecord = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件の定期支出をまとめて記録しますか？`)) return;
@@ -189,20 +243,24 @@ const RegularPaymentProcessor = ({ month }: Props) => {
     }
   };
 
-  // ── Undo ────────────────────────────────────────────────────
   const handleUndo = async (regularPaymentId: string) => {
     if (!user) return;
     const info = recordedMap.get(regularPaymentId);
     if (!info) return;
-    if (!confirm(`「${info.name}」の記録を取り消しますか？`)) return;
+    const templateName = templates.find(t => t.id === regularPaymentId)?.name ?? '';
+    if (!confirm(`「${templateName}」の記録を取り消しますか？`)) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'expenses', info.expenseId));
-      await updateDoc(doc(db, 'users', user.uid, 'regularPayments', regularPaymentId), {
-        nextPaymentDate: info.prevNextPaymentDate,
-      });
-      await updateDoc(doc(db, 'users', user.uid, 'regularPaymentActions', info.actionId), {
-        undone: true,
-      });
+      if (info.actionId && info.prevNextPaymentDate) {
+        // Revert nextPaymentDate if it was changed during recording
+        const current = templates.find(t => t.id === regularPaymentId);
+        if (current && current.nextPaymentDate.toDate().getTime() !== info.prevNextPaymentDate.toDate().getTime()) {
+          await updateDoc(doc(db, 'users', user.uid, 'regularPayments', regularPaymentId), {
+            nextPaymentDate: info.prevNextPaymentDate,
+          });
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'regularPaymentActions', info.actionId), { undone: true });
+      }
       // recordedMap updates via onSnapshot
     } catch (err) {
       console.error(err);
@@ -219,11 +277,11 @@ const RegularPaymentProcessor = ({ month }: Props) => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === upcomingPayments.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(upcomingPayments.map(p => p.id)));
-    }
+    setSelectedIds(
+      selectedIds.size === upcomingPayments.length
+        ? new Set()
+        : new Set(upcomingPayments.map(p => p.id))
+    );
   };
 
   const handleToggleCheck = async (payment: RegularPayment) => {
@@ -234,22 +292,17 @@ const RegularPaymentProcessor = ({ month }: Props) => {
       });
     } catch (err) {
       console.error(err);
-      setError('チェック状態の更新に失敗しました。');
     }
   };
 
   if (loading) return <p>読み込み中...</p>;
 
-  // Show upcoming (unrecorded) + recorded-this-month templates together
-  const recordedTemplates = templates.filter(t => recordedMap.has(t.id) && !upcomingPayments.some(u => u.id === t.id));
-  const allDisplayPayments = [...upcomingPayments, ...recordedTemplates];
-
-  const totalAmount = allDisplayPayments.reduce((sum, t) => sum + t.amount, 0);
+  const totalAmount = displayPayments.reduce((sum, t) => sum + t.amount, 0);
   const selectedAmount = upcomingPayments.filter(p => selectedIds.has(p.id)).reduce((sum, p) => sum + p.amount, 0);
 
   const groupedPayments = new Map<string, RegularPayment[]>();
   const noGroupPayments: RegularPayment[] = [];
-  allDisplayPayments.forEach(t => {
+  displayPayments.forEach(t => {
     if (t.groupId && groups.some(g => g.id === t.groupId)) {
       if (!groupedPayments.has(t.groupId)) groupedPayments.set(t.groupId, []);
       groupedPayments.get(t.groupId)!.push(t);
@@ -267,11 +320,10 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
       {error && <p className="text-red-500 mb-3">{error}</p>}
 
-      {allDisplayPayments.length === 0 ? (
+      {displayPayments.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400">今月支払う予定の定期支出はありません。</p>
       ) : (
         <>
-          {/* Bulk action bar (only for unrecorded items) */}
           {upcomingPayments.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
@@ -316,6 +368,7 @@ const RegularPaymentProcessor = ({ month }: Props) => {
                       <PaymentItem
                         key={template.id}
                         template={template}
+                        month={month}
                         selected={selectedIds.has(template.id)}
                         recordedInfo={recordedMap.get(template.id)}
                         onToggleSelect={() => toggleSelect(template.id)}
@@ -341,6 +394,7 @@ const RegularPaymentProcessor = ({ month }: Props) => {
                     <PaymentItem
                       key={template.id}
                       template={template}
+                      month={month}
                       selected={selectedIds.has(template.id)}
                       recordedInfo={recordedMap.get(template.id)}
                       onToggleSelect={() => toggleSelect(template.id)}
@@ -361,9 +415,10 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 };
 
 const PaymentItem = ({
-  template, selected, recordedInfo, onToggleSelect, onToggleCheck, onRecord, onUndo, recording
+  template, month, selected, recordedInfo, onToggleSelect, onToggleCheck, onRecord, onUndo, recording
 }: {
   template: RegularPayment;
+  month: Date;
   selected: boolean;
   recordedInfo?: RecordedInfo;
   onToggleSelect: () => void;
@@ -373,9 +428,7 @@ const PaymentItem = ({
   recording: boolean;
 }) => {
   const isRecorded = !!recordedInfo;
-  const displayDate = isRecorded
-    ? recordedInfo!.prevNextPaymentDate.toDate()
-    : template.nextPaymentDate.toDate();
+  const paymentDate = getPaymentDateForMonth(template, month) ?? template.nextPaymentDate.toDate();
 
   return (
     <li className={`flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isRecorded ? 'bg-green-50 dark:bg-green-900/10' : 'bg-white dark:bg-black'} ${template.isChecked ? 'text-red-500' : ''}`}>
@@ -394,7 +447,7 @@ const PaymentItem = ({
         <div className="min-w-0">
           <p className="font-semibold truncate">{template.name}</p>
           <p className="text-sm">
-            {displayDate.toLocaleDateString('ja-JP')} — ¥{template.amount.toLocaleString()}
+            {paymentDate.toLocaleDateString('ja-JP')} — ¥{template.amount.toLocaleString()}
           </p>
           {isRecorded && (
             <p className="text-xs text-green-600 dark:text-green-400 font-medium">記録済み</p>
