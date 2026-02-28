@@ -1225,8 +1225,10 @@ export default function ReceiptsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {searchResults.map(expense => (
-                <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
+              {searchResults.map(expense => {
+                const sId = standaloneForExpense.get(expense.id)?.id ?? null;
+                return (
+                <div key={expense.id} draggable={!!sId} onDragStart={sId ? e => handleDragStart(sId, e) : undefined} onDragEnd={sId ? handleDragEnd : undefined} className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${sId ? 'cursor-grab active:cursor-grabbing' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
                   <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group rounded-t-lg overflow-hidden">
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleExistingSelect(expense.id); }}
@@ -1234,7 +1236,7 @@ export default function ReceiptsPage() {
                     >
                       {selectedExistingIds.has(expense.id) && <span className="text-xs">✓</span>}
                     </button>
-                    <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer" draggable={false}>
                       {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1246,6 +1248,7 @@ export default function ReceiptsPage() {
                         <img
                           src={expense.receiptUrl}
                           alt={expense.receiptName || expense.store || 'レシート'}
+                          draggable={false}
                           className="absolute inset-0 w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                         />
                       )}
@@ -1280,7 +1283,8 @@ export default function ReceiptsPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1314,10 +1318,15 @@ export default function ReceiptsPage() {
             <section>
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {currentReceipts.map((expense) => (
+                {currentReceipts.map((expense) => {
+                  const standaloneId = standaloneForExpense.get(expense.id)?.id ?? null;
+                  return (
                   <div
                     key={expense.id}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                    draggable={!!standaloneId}
+                    onDragStart={standaloneId ? e => handleDragStart(standaloneId, e) : undefined}
+                    onDragEnd={standaloneId ? handleDragEnd : undefined}
+                    className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${standaloneId ? 'cursor-grab active:cursor-grabbing' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
                   >
                     {/* Thumbnail */}
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group rounded-t-lg overflow-hidden">
@@ -1327,7 +1336,7 @@ export default function ReceiptsPage() {
                       >
                         {selectedExistingIds.has(expense.id) && <span className="text-xs">✓</span>}
                       </button>
-                      <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer" draggable={false}>
                         {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1339,6 +1348,7 @@ export default function ReceiptsPage() {
                           <img
                             src={expense.receiptUrl}
                             alt={expense.receiptName || expense.store || 'レシート'}
+                            draggable={false}
                             className="absolute inset-0 w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                           />
                         )}
@@ -1398,7 +1408,8 @@ export default function ReceiptsPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
