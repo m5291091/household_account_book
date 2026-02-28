@@ -418,9 +418,27 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
 
   return (
     <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
         {headerAction}
+      </div>
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          type="button"
+          onClick={() => setShowTransfers(v => !v)}
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+            showTransfers
+              ? 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-600 dark:text-amber-300'
+              : 'bg-white border-gray-300 text-gray-500 dark:bg-black dark:border-gray-600 dark:text-gray-400 hover:border-amber-400'
+          }`}
+        >
+          {showTransfers ? '👁 振替を表示中' : '振替を表示する'}
+        </button>
+        {showTransfers && (
+          <span className="text-xs text-amber-700 dark:text-amber-400">
+            ※ 振替（集計除外）はオレンジ色で表示
+          </span>
+        )}
       </div>
 
       {viewMode === 'list' && (
@@ -447,24 +465,6 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full"/>
               <span>-</span>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full"/>
-            </div>
-            <div className="flex items-center md:col-span-4">
-              <button
-                type="button"
-                onClick={() => setShowTransfers(v => !v)}
-                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                  showTransfers
-                    ? 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-600 dark:text-amber-300'
-                    : 'bg-white border-gray-300 text-gray-500 dark:bg-black dark:border-gray-600 dark:text-gray-400 hover:border-amber-400'
-                }`}
-              >
-                <span>{showTransfers ? '👁 振替を表示中' : '振替を表示する'}</span>
-              </button>
-              {showTransfers && (
-                <span className="ml-3 text-xs text-amber-700 dark:text-amber-400">
-                  ※ 振替（集計除外）の行はオレンジ色で表示されます
-                </span>
-              )}
             </div>
           </div>
 
