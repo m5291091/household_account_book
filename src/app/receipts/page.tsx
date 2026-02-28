@@ -81,6 +81,36 @@ export default function ReceiptsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const dragScrollRef = useRef<number | null>(null);
+
+  // Auto-scroll the page while dragging near viewport edges
+  useEffect(() => {
+    if (!draggedReceiptId) {
+      if (dragScrollRef.current !== null) cancelAnimationFrame(dragScrollRef.current);
+      return;
+    }
+    const ZONE = 100;   // px from edge to trigger scroll
+    const MAX_SPEED = 15; // px per frame
+    let lastY = 0;
+    const onDragOver = (e: DragEvent) => { lastY = e.clientY; };
+    document.addEventListener('dragover', onDragOver);
+    const tick = () => {
+      const { innerHeight } = window;
+      if (lastY < ZONE) {
+        const speed = Math.round(MAX_SPEED * (1 - lastY / ZONE));
+        window.scrollBy(0, -speed);
+      } else if (lastY > innerHeight - ZONE) {
+        const speed = Math.round(MAX_SPEED * (1 - (innerHeight - lastY) / ZONE));
+        window.scrollBy(0, speed);
+      }
+      dragScrollRef.current = requestAnimationFrame(tick);
+    };
+    dragScrollRef.current = requestAnimationFrame(tick);
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+      if (dragScrollRef.current !== null) cancelAnimationFrame(dragScrollRef.current);
+    };
+  }, [draggedReceiptId]);
 
   // Close popover when clicking outside
   useEffect(() => {
