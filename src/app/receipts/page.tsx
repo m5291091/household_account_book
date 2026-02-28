@@ -13,34 +13,18 @@ import { StandaloneReceipt } from '@/types/Receipt';
 import { format, addMonths, subMonths, isSameMonth } from 'date-fns';
 import Link from 'next/link';
 
-interface ReceiptFolder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  order: number;
-  monthScope?: number | null; // 1-12 = only visible that month; null/undefined = all months
-}
-
-type SortMode = 'custom' | 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' | 'name_asc';
+type SortMode = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' | 'name_asc';
 
 export default function ReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
   const [allReceipts, setAllReceipts] = useState<Expense[]>([]);
-  const [folders, setFolders] = useState<ReceiptFolder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>('custom');
+  const [sortMode, setSortMode] = useState<SortMode>('date_desc');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // UI states
   const [renamingReceiptId, setRenamingReceiptId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderScope, setNewFolderScope] = useState<'all' | 'this'>('this');
-  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
-  const [renameFolderValue, setRenameFolderValue] = useState('');
-  const [movingReceiptId, setMovingReceiptId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   // Search state
@@ -65,18 +49,11 @@ export default function ReceiptsPage() {
   const [renamingStandaloneId, setRenamingStandaloneId] = useState<string | null>(null);
   const [renameStandaloneValue, setRenameStandaloneValue] = useState('');
 
-  // Drag-and-drop state
-  const [draggedReceiptId, setDraggedReceiptId] = useState<string | null>(null);
-  const [draggedReceiptType, setDraggedReceiptType] = useState<'standalone' | 'existing' | null>(null);
-  const [dragOverFolderId, setDragOverFolderId] = useState<string | 'parent' | null>(null);
-
   // Multi-select state
   const [selectedStandaloneIds, setSelectedStandaloneIds] = useState<Set<string>>(new Set());
   const [selectedExistingIds, setSelectedExistingIds] = useState<Set<string>>(new Set());
   const [bulkDateInput, setBulkDateInput] = useState('');
   const [showBulkDatePicker, setShowBulkDatePicker] = useState(false);
-  const [showBulkFolderPicker, setShowBulkFolderPicker] = useState(false);
-  const [bulkFolderTarget, setBulkFolderTarget] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -98,13 +75,6 @@ export default function ReceiptsPage() {
       }
     );
 
-    const unsubFolders = onSnapshot(
-      query(collection(db, 'users', user.uid, 'receiptFolders')),
-      (snapshot) => {
-        setFolders(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ReceiptFolder)));
-      }
-    );
-
     const unsubStandalone = onSnapshot(
       query(collection(db, 'users', user.uid, 'receipts')),
       (snapshot) => {
@@ -118,76 +88,24 @@ export default function ReceiptsPage() {
       }
     );
 
-    return () => { unsubReceipts(); unsubFolders(); unsubStandalone(); };
+    return () => { unsubReceipts(); unsubStandalone(); };
   }, [user, authLoading]);
 
-  // Breadcrumb path to current folder
-  const folderPath = useMemo(() => {
-    if (!currentFolderId) return [];
-    const path: ReceiptFolder[] = [];
-    let cur: ReceiptFolder | undefined = folders.find(f => f.id === currentFolderId);
-    while (cur) {
-      path.unshift(cur);
-      cur = cur.parentId ? folders.find(f => f.id === cur!.parentId) : undefined;
-    }
-    return path;
-  }, [currentFolderId, folders]);
-
-  // Folders directly inside the current folder
-  const currentFolders = useMemo(() => {
-    const currentMonthNum = currentMonth.getMonth() + 1;
-    return folders
-      .filter(f => f.parentId === currentFolderId)
-      .filter(f => !f.monthScope || f.monthScope === currentMonthNum)
-      .sort((a, b) => a.order - b.order);
-  }, [folders, currentFolderId, currentMonth]);
-
-  // Receipts directly inside the current folder, filtered by month, sorted
+  // Receipts for the current month, sorted
   const currentReceipts = useMemo(() => {
     const filtered = allReceipts.filter(e =>
-      (e.receiptFolderId ?? null) === currentFolderId &&
       isSameMonth(e.date.toDate(), currentMonth)
     );
     switch (sortMode) {
-      case 'date_desc':  return [...filtered].sort((a, b) => b.date.toMillis() - a.date.toMillis());
-      case 'date_asc':   return [...filtered].sort((a, b) => a.date.toMillis() - b.date.toMillis());
+      case 'date_desc':   return [...filtered].sort((a, b) => b.date.toMillis() - a.date.toMillis());
+      case 'date_asc':    return [...filtered].sort((a, b) => a.date.toMillis() - b.date.toMillis());
       case 'amount_desc': return [...filtered].sort((a, b) => b.amount - a.amount);
-      case 'amount_asc': return [...filtered].sort((a, b) => a.amount - b.amount);
-      case 'name_asc':   return [...filtered].sort((a, b) =>
+      case 'amount_asc':  return [...filtered].sort((a, b) => a.amount - b.amount);
+      case 'name_asc':    return [...filtered].sort((a, b) =>
         (a.receiptName || a.store || '').localeCompare(b.receiptName || b.store || '', 'ja'));
-      default:           return [...filtered].sort((a, b) => (a.receiptOrder ?? 0) - (b.receiptOrder ?? 0));
+      default:            return [...filtered].sort((a, b) => b.date.toMillis() - a.date.toMillis());
     }
-  }, [allReceipts, currentFolderId, sortMode, currentMonth]);
-
-  // Flat list of all folders for move dropdown (recursive)
-  const buildFolderOptions = (parentId: string | null, depth: number): { id: string | null; label: string }[] => {
-    const result: { id: string | null; label: string }[] = [];
-    folders
-      .filter(f => f.parentId === parentId)
-      .sort((a, b) => a.order - b.order)
-      .forEach(f => {
-        result.push({ id: f.id, label: '\u3000'.repeat(depth) + '📁 ' + f.name });
-        result.push(...buildFolderOptions(f.id, depth + 1));
-      });
-    return result;
-  };
-  const folderOptions = useMemo(
-    () => [{ id: null, label: '📂 ルート' }, ...buildFolderOptions(null, 0)],
-    [folders]
-  );
-
-  /** Returns the date to use for a standalone receipt's month bucket. */
-  const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
-    r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
-
-  // Standalone receipts (linked) currently in this folder, filtered by month
-  const currentStandaloneInFolder = useMemo(() => {
-    return standaloneReceipts.filter(r =>
-      r.receiptFolderId !== undefined &&
-      (r.receiptFolderId ?? null) === currentFolderId &&
-      isSameMonth(getStandaloneDisplayDate(r), currentMonth)
-    );
-  }, [standaloneReceipts, currentFolderId, currentMonth]);
+  }, [allReceipts, sortMode, currentMonth]);
 
   /** Map of expenseId → Expense for quick lookup in linked receipt cards. */
   const expenseById = useMemo(() => {
@@ -196,39 +114,27 @@ export default function ReceiptsPage() {
     return map;
   }, [allReceipts]);
 
+  /** Returns the date to use for a standalone receipt's month bucket. */
+  const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
+    r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
+
   // Search helpers
   const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
-
-  const getFolderPathLabel = (folderId: string | null | undefined): string => {
-    if (!folderId) return 'ルート';
-    const parts: string[] = [];
-    let cur: ReceiptFolder | undefined = folders.find(f => f.id === folderId);
-    while (cur) {
-      parts.unshift(cur.name);
-      cur = cur.parentId ? folders.find(f => f.id === cur!.parentId) : undefined;
-    }
-    return parts.join(' / ');
-  };
 
   const searchResults = useMemo(() => {
     if (!isSearchActive) return [];
     return allReceipts.filter(e => {
-      // Text: match receiptName, store, memo
       if (searchText.trim()) {
         const q = searchText.trim().toLowerCase();
         const haystack = [e.receiptName, e.store, e.memo].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      // Amount min
       if (searchAmountMin !== '' && e.amount < Number(searchAmountMin)) return false;
-      // Amount max
       if (searchAmountMax !== '' && e.amount > Number(searchAmountMax)) return false;
-      // Date from
       if (searchDateFrom) {
         const from = new Date(searchDateFrom);
         if (e.date.toDate() < from) return false;
       }
-      // Date to
       if (searchDateTo) {
         const to = new Date(searchDateTo);
         to.setHours(23, 59, 59, 999);
@@ -246,110 +152,12 @@ export default function ReceiptsPage() {
     setSearchDateTo('');
   };
 
-  const handleCreateFolder = async () => {
-    if (!user || !newFolderName.trim()) return;
-    const maxOrder = Math.max(-1, ...currentFolders.map(f => f.order));
-    await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
-      name: newFolderName.trim(),
-      parentId: currentFolderId,
-      order: maxOrder + 1,
-      monthScope: currentMonth.getMonth() + 1,
-    });
-    setNewFolderName('');
-    setCreatingFolder(false);
-  };
-
-  const handleRenameFolder = async (folderId: string) => {
-    if (!user || !renameFolderValue.trim()) return;
-    await updateDoc(doc(db, 'users', user.uid, 'receiptFolders', folderId), {
-      name: renameFolderValue.trim(),
-    });
-    setRenamingFolderId(null);
-  };
-
-  const handleDeleteFolder = async (folder: ReceiptFolder) => {
-    if (!user) return;
-    const hasChildren = folders.some(f => f.parentId === folder.id);
-    const hasReceipts = allReceipts.some(e => (e.receiptFolderId ?? null) === folder.id);
-    const confirmMsg = (hasChildren || hasReceipts)
-      ? `フォルダ「${folder.name}」内にアイテムがあります。削除すると中のアイテムは親フォルダに移動します。続けますか？`
-      : `フォルダ「${folder.name}」を削除しますか？`;
-    if (!confirm(confirmMsg)) return;
-
-    const batch = writeBatch(db);
-    folders.filter(f => f.parentId === folder.id).forEach(f =>
-      batch.update(doc(db, 'users', user.uid, 'receiptFolders', f.id), { parentId: folder.parentId ?? null })
-    );
-    allReceipts.filter(e => (e.receiptFolderId ?? null) === folder.id).forEach(e =>
-      batch.update(doc(db, 'users', user.uid, 'expenses', e.id), { receiptFolderId: folder.parentId ?? null })
-    );
-    batch.delete(doc(db, 'users', user.uid, 'receiptFolders', folder.id));
-    await batch.commit();
-    if (currentFolderId === folder.id) setCurrentFolderId(folder.parentId);
-  };
-
   const handleRenameReceipt = async (expenseId: string) => {
     if (!user) return;
     await updateDoc(doc(db, 'users', user.uid, 'expenses', expenseId), {
       receiptName: renameValue.trim() || null,
     });
     setRenamingReceiptId(null);
-  };
-
-  const handleDropOnFolder = async (targetFolderId: string | null) => {
-    if (!user || !draggedReceiptId) return;
-    if (draggedReceiptType === 'standalone') {
-      await updateDoc(doc(db, 'users', user.uid, 'receipts', draggedReceiptId), {
-        receiptFolderId: targetFolderId,
-      });
-    } else if (draggedReceiptType === 'existing') {
-      const maxOrder = Math.max(-1, ...allReceipts
-        .filter(e => (e.receiptFolderId ?? null) === targetFolderId)
-        .map(e => e.receiptOrder ?? 0));
-      await updateDoc(doc(db, 'users', user.uid, 'expenses', draggedReceiptId), {
-        receiptFolderId: targetFolderId,
-        receiptOrder: maxOrder + 1,
-      });
-    }
-    setDraggedReceiptId(null);
-    setDraggedReceiptType(null);
-    setDragOverFolderId(null);
-  };
-
-  const handleMoveReceipt = async (expenseId: string, targetFolderId: string | null) => {
-    if (!user) return;
-    const maxOrder = Math.max(-1, ...allReceipts
-      .filter(e => (e.receiptFolderId ?? null) === targetFolderId)
-      .map(e => e.receiptOrder ?? 0));
-    await updateDoc(doc(db, 'users', user.uid, 'expenses', expenseId), {
-      receiptFolderId: targetFolderId,
-      receiptOrder: maxOrder + 1,
-    });
-    setMovingReceiptId(null);
-  };
-
-  const handleReorderReceipts = async (idx: number, direction: 'up' | 'down') => {
-    if (!user) return;
-    const arr = currentReceipts;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= arr.length) return;
-    const batch = writeBatch(db);
-    const aOrder = arr[idx].receiptOrder ?? idx;
-    const bOrder = arr[swapIdx].receiptOrder ?? swapIdx;
-    batch.update(doc(db, 'users', user.uid, 'expenses', arr[idx].id), { receiptOrder: bOrder });
-    batch.update(doc(db, 'users', user.uid, 'expenses', arr[swapIdx].id), { receiptOrder: aOrder });
-    await batch.commit();
-  };
-
-  const handleReorderFolders = async (idx: number, direction: 'up' | 'down') => {
-    if (!user) return;
-    const arr = currentFolders;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= arr.length) return;
-    const batch = writeBatch(db);
-    batch.update(doc(db, 'users', user.uid, 'receiptFolders', arr[idx].id), { order: arr[swapIdx].order });
-    batch.update(doc(db, 'users', user.uid, 'receiptFolders', arr[swapIdx].id), { order: arr[idx].order });
-    await batch.commit();
   };
 
   const handleRemoveReceipt = async (expenseId: string) => {
@@ -479,7 +287,6 @@ export default function ReceiptsPage() {
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
       linkedExpenseIds: arrayUnion(expenseId),
-      receiptFolderId: currentFolderId,
       ...(isFirstLink ? { displayDate: expense.date } : {}),
     });
     batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
@@ -553,7 +360,6 @@ export default function ReceiptsPage() {
     setSelectedStandaloneIds(new Set());
     setSelectedExistingIds(new Set());
     setShowBulkDatePicker(false);
-    setShowBulkFolderPicker(false);
   };
 
   const totalSelected = selectedStandaloneIds.size + selectedExistingIds.size;
@@ -571,21 +377,6 @@ export default function ReceiptsPage() {
     await batch.commit();
     clearAllSelections();
     setBulkDateInput('');
-  };
-
-  const handleBulkMoveFolder = async () => {
-    if (!user) return;
-    const targetId = bulkFolderTarget === '' ? null : bulkFolderTarget;
-    const batch = writeBatch(db);
-    selectedStandaloneIds.forEach(id => {
-      batch.update(doc(db, 'users', user.uid, 'receipts', id), { receiptFolderId: targetId });
-    });
-    selectedExistingIds.forEach(id => {
-      batch.update(doc(db, 'users', user.uid, 'expenses', id), { receiptFolderId: targetId });
-    });
-    await batch.commit();
-    clearAllSelections();
-    setBulkFolderTarget('');
   };
 
   const handleBulkDelete = async () => {
@@ -693,34 +484,9 @@ export default function ReceiptsPage() {
             </div>
           ) : (
             <button
-              onClick={() => { setShowBulkDatePicker(true); setShowBulkFolderPicker(false); }}
+              onClick={() => setShowBulkDatePicker(true)}
               className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-700"
             >📅 日付を変更</button>
-          )}
-
-          {/* Bulk folder move */}
-          {showBulkFolderPicker ? (
-            <div className="flex items-center gap-2">
-              <select
-                value={bulkFolderTarget}
-                onChange={e => setBulkFolderTarget(e.target.value)}
-                className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
-              >
-                {folderOptions.map(opt => (
-                  <option key={String(opt.id)} value={opt.id ?? ''}>{opt.label}</option>
-                ))}
-              </select>
-              <button
-                onClick={handleBulkMoveFolder}
-                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded"
-              >移動</button>
-              <button onClick={() => setShowBulkFolderPicker(false)} className="text-xs text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => { setShowBulkFolderPicker(true); setShowBulkDatePicker(false); }}
-              className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-700"
-            >📁 フォルダへ移動</button>
           )}
 
           {/* Unlink (only if any linked standalone selected) */}
@@ -808,7 +574,7 @@ export default function ReceiptsPage() {
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-lg transition-colors"
               >
-                📁 フォルダを選択
+                �� フォルダを選択
               </button>
             </div>
           </div>
@@ -823,10 +589,7 @@ export default function ReceiptsPage() {
             {standaloneReceipts.filter(r => r.linkedExpenseIds.length === 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
-                draggable
-                onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
-                onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
-                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
               >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   {/* Checkbox overlay */}
@@ -890,17 +653,14 @@ export default function ReceiptsPage() {
       )}
 
       {/* Linked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && r.receiptFolderId === undefined && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && r.receiptFolderId === undefined && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
-                draggable
-                onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
-                onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
-                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
               >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   {/* Checkbox overlay */}
@@ -1060,12 +820,12 @@ export default function ReceiptsPage() {
 
         {isSearchActive && (
           <p className="text-xs text-indigo-600 dark:text-indigo-400">
-            {searchResults.length} 件見つかりました（全フォルダ対象）
+            {searchResults.length} 件見つかりました
           </p>
         )}
       </div>
 
-      {/* ── Search results (overrides folder view when active) ── */}
+      {/* ── Search results (overrides normal view when active) ── */}
       {isSearchActive ? (
         <div>
           {searchResults.length === 0 ? (
@@ -1107,17 +867,10 @@ export default function ReceiptsPage() {
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
                     </div>
-                    <div className="text-xs text-indigo-500 dark:text-indigo-400 truncate">
-                      📁 {getFolderPathLabel(expense.receiptFolderId)}
-                    </div>
                     {expense.memo && (
                       <div className="text-xs text-gray-400 dark:text-gray-500 line-clamp-2">{expense.memo}</div>
                     )}
-                    <div className="flex justify-between items-center pt-1 border-t dark:border-gray-700 mt-auto">
-                      <button
-                        onClick={() => { setCurrentFolderId(expense.receiptFolderId ?? null); handleClearSearch(); }}
-                        className="text-xs text-indigo-500 hover:text-indigo-700"
-                      >フォルダへ移動</button>
+                    <div className="flex justify-end items-center pt-1 border-t dark:border-gray-700 mt-auto">
                       <button
                         onClick={() => handleRemoveReceipt(expense.id)}
                         disabled={removingId === expense.id}
@@ -1132,172 +885,39 @@ export default function ReceiptsPage() {
         </div>
       ) : (
         <>
-      <nav className="flex items-center gap-1 mb-4 text-sm flex-wrap">
-        <button
-          onClick={() => setCurrentFolderId(null)}
-          className={`hover:underline ${currentFolderId === null ? 'font-bold text-indigo-600' : 'text-gray-500 dark:text-gray-400'}`}
-        >
-          ルート
-        </button>
-        {folderPath.map(folder => (
-          <span key={folder.id} className="flex items-center gap-1">
-            <span className="text-gray-400">/</span>
-            <button
-              onClick={() => setCurrentFolderId(folder.id)}
-              className={`hover:underline ${currentFolderId === folder.id ? 'font-bold text-indigo-600' : 'text-gray-500 dark:text-gray-400'}`}
-            >
-              {folder.name}
-            </button>
-          </span>
-        ))}
-      </nav>
-
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-3 mb-4 items-center">
-        <button
-          onClick={() => { setCreatingFolder(true); setNewFolderName(''); }}
-          className="flex items-center gap-1 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold rounded text-sm"
-        >
-          📁 新規フォルダ
-        </button>
-        <div className="flex items-center gap-2 ml-auto">
-          <label className="text-sm text-gray-600 dark:text-gray-400">並び順:</label>
-          <select
-            value={sortMode}
-            onChange={(e) => setSortMode(e.target.value as SortMode)}
-            className="text-sm px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
-          >
-            <option value="custom">カスタム順</option>
-            <option value="date_desc">日付（新しい順）</option>
-            <option value="date_asc">日付（古い順）</option>
-            <option value="amount_desc">金額（高い順）</option>
-            <option value="amount_asc">金額（低い順）</option>
-            <option value="name_asc">名前（あいうえお順）</option>
-          </select>
-        </div>
-      </div>
-
-      {/* New folder input */}
-      {creatingFolder && (
-        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 rounded-lg space-y-2">
-          <div className="flex gap-2 items-center">
-            <span>📁</span>
-            <input
-              type="text"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setCreatingFolder(false); }}
-              placeholder="フォルダ名"
-              autoFocus
-              className="flex-grow px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-sm"
-            />
+          {/* Sort toolbar */}
+          <div className="flex flex-wrap gap-3 mb-4 items-center justify-end">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">並び順:</label>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="text-sm px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              >
+                <option value="date_desc">日付（新しい順）</option>
+                <option value="date_asc">日付（古い順）</option>
+                <option value="amount_desc">金額（高い順）</option>
+                <option value="amount_asc">金額（低い順）</option>
+                <option value="name_asc">名前（あいうえお順）</option>
+              </select>
+            </div>
           </div>
-          <div className="flex gap-2 pl-6">
-            <button onClick={handleCreateFolder} className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold rounded text-sm">作成</button>
-            <button onClick={() => setCreatingFolder(false)} className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 rounded text-sm">キャンセル</button>
-          </div>
-        </div>
-      )}
 
-      {/* Back button — also a drop target to move receipt to parent folder */}
-      {currentFolderId && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverFolderId('parent'); }}
-          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
-          onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folderPath[folderPath.length - 2]?.id ?? null); }}
-          className={`mb-4 inline-flex rounded-lg transition-all ${dragOverFolderId === 'parent' ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-400 px-2' : ''}`}
-        >
-          <button
-            onClick={() => setCurrentFolderId(folderPath[folderPath.length - 2]?.id ?? null)}
-            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 py-1"
-          >
-            ← 上のフォルダへ
-            {dragOverFolderId === 'parent' && <span className="text-xs text-indigo-600 dark:text-indigo-400 ml-1">ここにドロップ</span>}
-          </button>
-        </div>
-      )}
-
-      {currentFolders.length === 0 && currentReceipts.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <p className="text-gray-500 dark:text-gray-400 text-lg">
-            {currentFolderId ? 'このフォルダは空です。' : `${format(currentMonth, 'yyyy年M月')}のレシートはありません。`}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-
-          {/* ── Folders ── */}
-          {currentFolders.length > 0 && (
-            <section>
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">フォルダ</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {currentFolders.map((folder, idx) => (
-                  <div
-                    key={folder.id}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverFolderId(folder.id); }}
-                    onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
-                    onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folder.id); }}
-                    className={`border rounded-lg p-3 flex flex-col gap-2 transition-all ${dragOverFolderId === folder.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 scale-105 shadow-md' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700'}`}
-                  >
-                    {renamingFolderId === folder.id ? (
-                      <input
-                        type="text"
-                        value={renameFolderValue}
-                        onChange={(e) => setRenameFolderValue(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameFolder(folder.id); if (e.key === 'Escape') setRenamingFolderId(null); }}
-                        autoFocus
-                        className="w-full px-1 py-0.5 text-sm border border-gray-300 rounded bg-white dark:bg-black"
-                      />
-                    ) : (
-                      <button
-                        onClick={() => setCurrentFolderId(folder.id)}
-                        className="flex items-center gap-1 text-left hover:underline"
-                      >
-                        <span className="text-2xl shrink-0">📁</span>
-                         <div className="min-w-0">
-                           <span className="text-sm font-medium text-gray-800 dark:text-gray-100 break-all">{folder.name}</span>
-                           {folder.monthScope && (
-                             <span className="block text-xs text-yellow-600 dark:text-yellow-400">{folder.monthScope}月のみ</span>
-                           )}
-                         </div>
-                      </button>
-                    )}
-                    <div className="flex gap-1 justify-between mt-auto">
-                      <div className="flex gap-0.5">
-                        <button onClick={() => handleReorderFolders(idx, 'up')} disabled={idx === 0} className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
-                        <button onClick={() => handleReorderFolders(idx, 'down')} disabled={idx === currentFolders.length - 1} className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => { setRenamingFolderId(folder.id); setRenameFolderValue(folder.name); }}
-                          className="text-xs text-blue-500 hover:text-blue-700"
-                        >名前変更</button>
-                        <button
-                          onClick={() => handleDeleteFolder(folder)}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >削除</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── Receipts ── */}
-          {(currentReceipts.length > 0 || currentStandaloneInFolder.length > 0) && (
+          {currentReceipts.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
+                {format(currentMonth, 'yyyy年M月')}のレシートはありません。
+              </p>
+            </div>
+          ) : (
             <section>
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {currentReceipts.map((expense, idx) => (
+                {currentReceipts.map((expense) => (
                   <div
                     key={expense.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', expense.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(expense.id); setDraggedReceiptType('existing'); }}
-                    onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === expense.id ? 'opacity-40 scale-95' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
+                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
                   >
-
                     {/* Thumbnail */}
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
                       <button
@@ -1325,7 +945,6 @@ export default function ReceiptsPage() {
                     </div>
 
                     <div className="p-3 flex-grow flex flex-col gap-2">
-
                       {/* Custom name */}
                       {renamingReceiptId === expense.id ? (
                         <div className="flex gap-1">
@@ -1358,37 +977,7 @@ export default function ReceiptsPage() {
                         {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
                       </div>
 
-                      {/* Move to folder */}
-                      {movingReceiptId === expense.id ? (
-                        <div className="flex gap-1 items-center">
-                          <select
-                            defaultValue={expense.receiptFolderId ?? ''}
-                            onChange={(e) => handleMoveReceipt(expense.id, e.target.value === '' ? null : e.target.value)}
-                            className="flex-grow text-xs px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
-                          >
-                            {folderOptions.map(opt => (
-                              <option key={String(opt.id)} value={opt.id ?? ''}>{opt.label}</option>
-                            ))}
-                          </select>
-                          <button onClick={() => setMovingReceiptId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setMovingReceiptId(expense.id)}
-                          className="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 text-left"
-                        >
-                          📁 フォルダへ移動
-                        </button>
-                      )}
-
-                      {/* Reorder (custom mode only) + remove */}
-                      <div className="flex items-center justify-between pt-1 border-t dark:border-gray-700 mt-auto">
-                        {sortMode === 'custom' ? (
-                          <div className="flex gap-0.5">
-                            <button onClick={() => handleReorderReceipts(idx, 'up')} disabled={idx === 0} title="上へ" className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
-                            <button onClick={() => handleReorderReceipts(idx, 'down')} disabled={idx === currentReceipts.length - 1} title="下へ" className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
-                          </div>
-                        ) : <span />}
+                      <div className="flex items-center justify-end pt-1 border-t dark:border-gray-700 mt-auto">
                         <button
                           onClick={() => handleRemoveReceipt(expense.id)}
                           disabled={removingId === expense.id}
@@ -1400,93 +989,13 @@ export default function ReceiptsPage() {
                     </div>
                   </div>
                 ))}
-                {currentStandaloneInFolder.map(receipt => (
-                  <div
-                    key={receipt.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
-                    onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-indigo-200 dark:border-indigo-800'} cursor-grab active:cursor-grabbing`}
-                  >
-                    <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
-                        className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
-                      >
-                        {selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}
-                      </button>
-                      <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
-                        {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            <span className="font-semibold text-sm">PDFファイル</span>
-                          </div>
-                        ) : (
-                          <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
-                        )}
-                      </a>
-                      <span className="absolute top-2 right-2 text-xs bg-indigo-600 text-white px-1.5 py-0.5 rounded">🔗</span>
-                    </div>
-                    <div className="p-3 flex flex-col gap-2">
-                      {renamingStandaloneId === receipt.id ? (
-                        <div className="flex gap-1">
-                          <input
-                            type="text"
-                            value={renameStandaloneValue}
-                            onChange={(e) => setRenameStandaloneValue(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleRenameStandalone(receipt.id); if (e.key === 'Escape') setRenamingStandaloneId(null); }}
-                            autoFocus
-                            placeholder="ファイル名を入力"
-                            className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
-                          />
-                          <button onClick={() => handleRenameStandalone(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
-                          <button onClick={() => setRenamingStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded">✕</button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
-                          <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
-                        </div>
-                      )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
-                      <div className="flex flex-col gap-1 pt-1 border-t dark:border-gray-700">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">紐付き支出 ({receipt.linkedExpenseIds.length}件)</span>
-                          <button onClick={() => openLinkModal(receipt.id)} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">＋ 追加</button>
-                        </div>
-                        {receipt.linkedExpenseIds.map(eid => {
-                          const exp = expenseById.get(eid);
-                          return (
-                            <div key={eid} className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 rounded px-2 py-0.5">
-                              <span className="text-xs text-gray-700 dark:text-gray-300 flex-grow truncate">
-                                {exp ? `${format(exp.date.toDate(), 'MM/dd')} ${exp.store || '(店名なし)'} ¥${exp.amount.toLocaleString()}` : eid}
-                              </span>
-                              <button
-                                title="この支出との紐付けを解除"
-                                onClick={() => handleUnlinkReceipt(receipt, eid)}
-                                className="flex-shrink-0 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold"
-                              >✕</button>
-                            </div>
-                          );
-                        })}
-                        <button
-                          onClick={() => handleDeleteStandaloneReceipt(receipt)}
-                          disabled={deletingStandaloneId === receipt.id}
-                          className="mt-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 text-left"
-                        >{deletingStandaloneId === receipt.id ? '削除中...' : '🗑 ファイルを削除'}</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </section>
           )}
-        </div>
-      )}
         </>
       )}
+
+      {/* Link modal */}
       {linkingReceiptId && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -1561,7 +1070,7 @@ export default function ReceiptsPage() {
                             <span className="text-xs bg-indigo-200 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 px-1.5 py-0.5 rounded">🔗 紐付き済</span>
                           )}
                           {!alreadyLinkedToThis && e.receiptUrl && (
-                            <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">📎 添付済</span>
+                            <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">�� 添付済</span>
                           )}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
@@ -1576,5 +1085,3 @@ export default function ReceiptsPage() {
     </div>
   );
 }
-
-
