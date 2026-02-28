@@ -22,6 +22,7 @@ export interface Expense {
   receiptName?: string;        // カスタム表示名
   receiptFolderId?: string | null; // 所属フォルダID (null = ルート)
   receiptOrder?: number;       // カスタム並び順
+  isTransfer?: boolean;        // 振替（チャージなど）。trueの場合は支出集計から除外される
 }
 
 // This is for the form state before converting to Firestore types

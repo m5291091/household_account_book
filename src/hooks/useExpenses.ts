@@ -32,7 +32,9 @@ export const useExpenses = (userId: string | undefined, startDate: Date, endDate
         mergedMap.set(expense.id, expense);
       });
 
-      const merged = Array.from(mergedMap.values()).sort(
+      const merged = Array.from(mergedMap.values())
+        .filter(e => !e.isTransfer)
+        .sort(
         (a, b) => b.date.toDate().getTime() - a.date.toDate().getTime()
       );
 

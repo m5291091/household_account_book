@@ -43,7 +43,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
   
-  const isEditMode = !!expenseToEdit;
+  const [isTransfer, setIsTransfer] = useState(false);
 
   // Refs for focus management
   const dateRef = useRef<HTMLInputElement>(null);
@@ -97,8 +97,10 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         receiptFile: null,
         receiptUrl: expenseToEdit.receiptUrl || '',
       });
+      setIsTransfer(!!expenseToEdit.isTransfer);
     } else if (!initialData) {
       resetForm();
+      setIsTransfer(false);
     }
   }, [expenseToEdit, isEditMode, initialData]);
 
@@ -271,6 +273,7 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
         memo: formData.memo.trim(),
         irregularDate: formData.irregularMonth ? Timestamp.fromDate(new Date(`${formData.irregularMonth}-01`)) : null,
         receiptUrl: receiptUrl || "",
+        isTransfer: isTransfer,
       };
 
       if (isEditMode && expenseToEdit) {
@@ -381,6 +384,21 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
               </a>
             </div>
           )}
+        </div>
+        <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md">
+          <input
+            type="checkbox"
+            id="isTransfer"
+            checked={isTransfer}
+            onChange={(e) => setIsTransfer(e.target.checked)}
+            className="h-4 w-4 text-amber-600 rounded"
+          />
+          <label htmlFor="isTransfer" className="text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+            <span className="font-medium">振替として記録（支出集計から除外）</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400">
+              電子マネーへのチャージ・口座間の振替など、実際の消費ではない支出にチェックしてください
+            </span>
+          </label>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}
