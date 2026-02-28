@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background gradient: indigo → blue -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#1E1B4B"/>
+      <stop offset="45%"  stop-color="#4338CA"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <!-- Coin radial gradient (gold) -->
+    <radialGradient id="coinGrad" cx="38%" cy="32%" r="68%">
+      <stop offset="0%"   stop-color="#FEF3C7"/>
+      <stop offset="35%"  stop-color="#FCD34D"/>
+      <stop offset="75%"  stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </radialGradient>
+
+    <!-- Coin shadow -->
+    <filter id="coinShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#1E1B4B" flood-opacity="0.55"/>
+    </filter>
+
+    <!-- Soft glow behind coin -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Clip to rounded square -->
+    <clipPath id="roundedClip">
+      <rect width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGrad)"/>
+
+  <!-- Decorative background orbs -->
+  <circle cx="450" cy="70"  r="180" fill="rgba(255,255,255,0.04)" clip-path="url(#roundedClip)"/>
+  <circle cx="60"  cy="455" r="150" fill="rgba(255,255,255,0.04)" clip-path="url(#roundedClip)"/>
+  <circle cx="256" cy="220" r="180" fill="rgba(99,102,241,0.18)"  clip-path="url(#roundedClip)" filter="url(#glow)"/>
+
+  <!-- Coin outer glow ring -->
+  <circle cx="256" cy="215" r="155" fill="rgba(252,211,77,0.12)" clip-path="url(#roundedClip)"/>
+
+  <!-- Main coin -->
+  <circle cx="256" cy="210" r="142" fill="url(#coinGrad)" filter="url(#coinShadow)" clip-path="url(#roundedClip)"/>
+
+  <!-- Coin rim (engraved ring) -->
+  <circle cx="256" cy="210" r="126" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5" stroke-dasharray="10 5"/>
+
+  <!-- Coin highlight / shine (top-left specular) -->
+  <ellipse cx="207" cy="158" rx="72" ry="42"
+           fill="rgba(255,255,255,0.30)"
+           transform="rotate(-28,207,158)"
+           clip-path="url(#roundedClip)"/>
+
+  <!-- Small secondary shine -->
+  <ellipse cx="330" cy="270" rx="22" ry="12"
+           fill="rgba(255,255,255,0.12)"
+           transform="rotate(-28,330,270)"
+           clip-path="url(#roundedClip)"/>
+
+  <!-- ¥ symbol -->
+  <text
+    x="256" y="266"
+    text-anchor="middle"
+    font-size="172"
+    font-weight="900"
+    font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+    fill="#7C2D12"
+    opacity="0.92"
+  >¥</text>
+
+  <!-- === Bar chart at the bottom === -->
+  <!-- Bar 1 -->
+  <rect x="96"  y="410" width="42" height="56" rx="7" fill="rgba(255,255,255,0.55)"/>
+  <!-- Bar 2 -->
+  <rect x="152" y="388" width="42" height="78" rx="7" fill="rgba(255,255,255,0.68)"/>
+  <!-- Bar 3 (tallest) -->
+  <rect x="208" y="362" width="42" height="104" rx="7" fill="rgba(255,255,255,0.88)"/>
+  <!-- Bar 4 -->
+  <rect x="264" y="378" width="42" height="88" rx="7" fill="rgba(255,255,255,0.75)"/>
+  <!-- Bar 5 -->
+  <rect x="320" y="395" width="42" height="71" rx="7" fill="rgba(255,255,255,0.62)"/>
+  <!-- Bar 6 -->
+  <rect x="376" y="406" width="42" height="60" rx="7" fill="rgba(255,255,255,0.50)"/>
+
+  <!-- Trend line over bars -->
+  <polyline
+    points="117,404 173,378 229,350 285,365 341,382 397,372"
+    stroke="#34D399"
+    stroke-width="5"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    clip-path="url(#roundedClip)"
+  />
+  <!-- Trend arrow head -->
+  <polygon points="397,362 411,370 391,380" fill="#34D399" clip-path="url(#roundedClip)"/>
+
+  <!-- Dots on trend line -->
+  <circle cx="117" cy="404" r="5" fill="#34D399"/>
+  <circle cx="173" cy="378" r="5" fill="#34D399"/>
+  <circle cx="229" cy="350" r="5" fill="#34D399"/>
+  <circle cx="285" cy="365" r="5" fill="#34D399"/>
+  <circle cx="341" cy="382" r="5" fill="#34D399"/>
+</svg>

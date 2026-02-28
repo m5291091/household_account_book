@@ -13,6 +13,15 @@ export const metadata: Metadata = {
   title: "収支管理アプリ",
   description: "Next.jsとFirebaseで作成した家計簿アプリ",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
