@@ -9,6 +9,6 @@ export interface StandaloneReceipt {
   uploadedAt: Timestamp;
   displayDate?: Timestamp;        // Set when linked; reflects the linked expense's date
   receiptFolderId?: string | null; // Folder organisation (same tree as expenses)
-  linkedExpenseId: string | null;
+  linkedExpenseIds: string[];  // Array of linked expense IDs (supports multiple links)
   memo?: string;
 }

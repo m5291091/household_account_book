@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { db, storage } from '@/lib/firebase/config';
 import {
   collection, query, onSnapshot, doc, updateDoc,
-  addDoc, deleteDoc, writeBatch, getDocs, orderBy, limit, Timestamp,
+  addDoc, deleteDoc, writeBatch, getDocs, orderBy, limit, Timestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,7 +108,13 @@ export default function ReceiptsPage() {
     const unsubStandalone = onSnapshot(
       query(collection(db, 'users', user.uid, 'receipts')),
       (snapshot) => {
-        setStandaloneReceipts(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as StandaloneReceipt)));
+        setStandaloneReceipts(snapshot.docs.map(d => {
+          const data = d.data();
+          // Backward compatibility: convert old single linkedExpenseId to array
+          const linkedExpenseIds: string[] = data.linkedExpenseIds ??
+            (data.linkedExpenseId ? [data.linkedExpenseId] : []);
+          return { id: d.id, ...data, linkedExpenseIds } as StandaloneReceipt;
+        }));
       }
     );
 
@@ -173,6 +179,13 @@ export default function ReceiptsPage() {
   /** Returns the date to use for a standalone receipt's month bucket. */
   const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
     r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
+
+  /** Map of expenseId → Expense for quick lookup in linked receipt cards. */
+  const expenseById = useMemo(() => {
+    const map = new Map<string, Expense>();
+    allReceipts.forEach(e => map.set(e.id, e));
+    return map;
+  }, [allReceipts]);
 
   // Search helpers
   const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
@@ -470,13 +483,20 @@ export default function ReceiptsPage() {
     const receipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
     const expense = linkModalExpenses.find(e => e.id === expenseId);
     if (!receipt || !expense) return;
-    if (expense.receiptUrl && expense.receiptUrl.trim() !== '') {
-      if (!confirm(`「${expense.store || '(店名なし)'}」には既にレシートが添付されています。上書きしますか？`)) return;
+
+    // Confirm if already linked to one or more expenses
+    if (receipt.linkedExpenseIds.length > 0) {
+      if (!confirm(`このファイルはすでに ${receipt.linkedExpenseIds.length} 件の支出に紐付けられています。\n追加で紐付けますか？`)) return;
     }
+    // Confirm if target expense already has a different receipt attached
+    if (expense.receiptUrl && expense.receiptUrl.trim() !== '' && expense.receiptUrl !== receipt.fileUrl) {
+      if (!confirm(`「${expense.store || '(店名なし)'}」には既に別のレシートが添付されています。上書きしますか？`)) return;
+    }
+    const isFirstLink = receipt.linkedExpenseIds.length === 0;
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
-      linkedExpenseId: expenseId,
-      displayDate: expense.date,
+      linkedExpenseIds: arrayUnion(expenseId),
+      ...(isFirstLink ? { displayDate: expense.date } : {}),
     });
     batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
       receiptUrl: receipt.fileUrl,
@@ -486,11 +506,15 @@ export default function ReceiptsPage() {
     setLinkingReceiptId(null);
   };
 
-  const handleUnlinkReceipt = async (receipt: StandaloneReceipt) => {
-    if (!user || !receipt.linkedExpenseId) return;
+  const handleUnlinkReceipt = async (receipt: StandaloneReceipt, expenseId: string) => {
+    if (!user) return;
+    const newIds = receipt.linkedExpenseIds.filter(id => id !== expenseId);
     const batch = writeBatch(db);
-    batch.update(doc(db, 'users', user.uid, 'receipts', receipt.id), { linkedExpenseId: null, displayDate: null });
-    batch.update(doc(db, 'users', user.uid, 'expenses', receipt.linkedExpenseId), { receiptUrl: '' });
+    batch.update(doc(db, 'users', user.uid, 'receipts', receipt.id), {
+      linkedExpenseIds: arrayRemove(expenseId),
+      ...(newIds.length === 0 ? { displayDate: null } : {}),
+    });
+    batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), { receiptUrl: '' });
     await batch.commit();
   };
 
@@ -507,8 +531,12 @@ export default function ReceiptsPage() {
     setDeletingStandaloneId(receipt.id);
     try {
       await deleteObject(storageRef(storage, receipt.storagePath));
-      if (receipt.linkedExpenseId) {
-        await updateDoc(doc(db, 'users', user.uid, 'expenses', receipt.linkedExpenseId), { receiptUrl: '' });
+      if (receipt.linkedExpenseIds.length > 0) {
+        const batch = writeBatch(db);
+        receipt.linkedExpenseIds.forEach(eid => {
+          batch.update(doc(db, 'users', user.uid, 'expenses', eid), { receiptUrl: '' });
+        });
+        await batch.commit();
       }
       await deleteDoc(doc(db, 'users', user.uid, 'receipts', receipt.id));
     } catch (e) {
@@ -583,9 +611,9 @@ export default function ReceiptsPage() {
       const r = standaloneReceipts.find(x => x.id === id);
       if (!r) continue;
       try { await deleteObject(storageRef(storage, r.storagePath)); } catch {}
-      if (r.linkedExpenseId) {
-        batch.update(doc(db, 'users', user.uid, 'expenses', r.linkedExpenseId), { receiptUrl: '' });
-      }
+      r.linkedExpenseIds.forEach(eid => {
+        batch.update(doc(db, 'users', user.uid, 'expenses', eid), { receiptUrl: '' });
+      });
       batch.delete(doc(db, 'users', user.uid, 'receipts', id));
     }
     selectedExistingIds.forEach(id => {
@@ -597,12 +625,14 @@ export default function ReceiptsPage() {
 
   const handleBulkUnlink = async () => {
     if (!user) return;
-    const toUnlink = standaloneReceipts.filter(r => selectedStandaloneIds.has(r.id) && r.linkedExpenseId);
+    const toUnlink = standaloneReceipts.filter(r => selectedStandaloneIds.has(r.id) && r.linkedExpenseIds.length > 0);
     if (toUnlink.length === 0) return;
     const batch = writeBatch(db);
     toUnlink.forEach(r => {
-      batch.update(doc(db, 'users', user.uid, 'receipts', r.id), { linkedExpenseId: null, displayDate: null });
-      batch.update(doc(db, 'users', user.uid, 'expenses', r.linkedExpenseId!), { receiptUrl: '' });
+      batch.update(doc(db, 'users', user.uid, 'receipts', r.id), { linkedExpenseIds: [], displayDate: null });
+      r.linkedExpenseIds.forEach(eid => {
+        batch.update(doc(db, 'users', user.uid, 'expenses', eid), { receiptUrl: '' });
+      });
     });
     await batch.commit();
     clearAllSelections();
@@ -710,7 +740,7 @@ export default function ReceiptsPage() {
           )}
 
           {/* Unlink (only if any linked standalone selected) */}
-          {Array.from(selectedStandaloneIds).some(id => standaloneReceipts.find(r => r.id === id)?.linkedExpenseId) && (
+          {Array.from(selectedStandaloneIds).some(id => standaloneReceipts.find(r => r.id === id)?.linkedExpenseIds.length ?? 0 > 0) && (
             <button
               onClick={handleBulkUnlink}
               className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-300 text-sm rounded hover:bg-amber-200 dark:hover:bg-amber-900/50"
@@ -802,11 +832,11 @@ export default function ReceiptsPage() {
       </div>
 
       {/* Unlinked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseIds.length === 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">未紐付きレシート</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseIds.length === 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
                 draggable
@@ -876,11 +906,11 @@ export default function ReceiptsPage() {
       )}
 
       {/* Linked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
                 draggable
@@ -931,16 +961,35 @@ export default function ReceiptsPage() {
                     </div>
                   )}
                   <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
-                  <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
-                    <button
-                      onClick={() => handleUnlinkReceipt(receipt)}
-                      className="flex-1 text-xs bg-amber-500 hover:bg-amber-600 text-white py-1 px-2 rounded"
-                    >支出から紐付け解除</button>
+                  {/* Linked expenses list with individual unlink buttons */}
+                  <div className="flex flex-col gap-1 pt-1 border-t dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">紐付き支出 ({receipt.linkedExpenseIds.length}件)</span>
+                      <button
+                        onClick={() => openLinkModal(receipt.id)}
+                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >＋ 追加</button>
+                    </div>
+                    {receipt.linkedExpenseIds.map(eid => {
+                      const exp = expenseById.get(eid);
+                      return (
+                        <div key={eid} className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 rounded px-2 py-0.5">
+                          <span className="text-xs text-gray-700 dark:text-gray-300 flex-grow truncate">
+                            {exp ? `${format(exp.date.toDate(), 'MM/dd')} ${exp.store || '(店名なし)'} ¥${exp.amount.toLocaleString()}` : eid}
+                          </span>
+                          <button
+                            title="この支出との紐付けを解除"
+                            onClick={() => handleUnlinkReceipt(receipt, eid)}
+                            className="flex-shrink-0 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold"
+                          >✕</button>
+                        </div>
+                      );
+                    })}
                     <button
                       onClick={() => handleDeleteStandaloneReceipt(receipt)}
                       disabled={deletingStandaloneId === receipt.id}
-                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-                    >{deletingStandaloneId === receipt.id ? '削除中...' : '削除'}</button>
+                      className="mt-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 text-left"
+                    >{deletingStandaloneId === receipt.id ? '削除中...' : '🗑 ファイルを削除'}</button>
                   </div>
                 </div>
               </div>
@@ -1391,8 +1440,18 @@ export default function ReceiptsPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setLinkingReceiptId(null); }}
         >
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">支出と紐付け</h3>
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">支出と紐付け</h3>
+                {(() => {
+                  const linkingReceipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
+                  return linkingReceipt && linkingReceipt.linkedExpenseIds.length > 0 ? (
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
+                      現在 {linkingReceipt.linkedExpenseIds.length} 件に紐付き済み — 追加で紐付けできます
+                    </p>
+                  ) : null;
+                })()}
+              </div>
               <button onClick={() => setLinkingReceiptId(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
             <div className="p-3 border-b dark:border-gray-700 space-y-2">
@@ -1428,21 +1487,34 @@ export default function ReceiptsPage() {
                     }
                     return true;
                   })
-                  .map(e => (
-                    <button
-                      key={e.id}
-                      onClick={() => handleLinkReceipt(e.id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 ${e.receiptUrl ? 'border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</span>
-                        {e.receiptUrl && (
-                          <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">📎 添付済</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
-                    </button>
-                  ))
+                  .map(e => {
+                    const linkingReceipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
+                    const alreadyLinkedToThis = linkingReceipt?.linkedExpenseIds.includes(e.id) ?? false;
+                    return (
+                      <button
+                        key={e.id}
+                        onClick={() => handleLinkReceipt(e.id)}
+                        disabled={alreadyLinkedToThis}
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                          alreadyLinkedToThis
+                            ? 'border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 cursor-not-allowed opacity-70'
+                            : e.receiptUrl ? 'border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</span>
+                          {alreadyLinkedToThis && (
+                            <span className="text-xs bg-indigo-200 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 px-1.5 py-0.5 rounded">🔗 紐付き済</span>
+                          )}
+                          {!alreadyLinkedToThis && e.receiptUrl && (
+                            <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">📎 添付済</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
+                      </button>
+                    );
+                  })
               )}
             </div>
           </div>
