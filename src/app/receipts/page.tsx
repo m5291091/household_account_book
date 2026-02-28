@@ -180,6 +180,15 @@ export default function ReceiptsPage() {
   const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
     r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
 
+  // Standalone receipts (linked) currently in this folder, filtered by month
+  const currentStandaloneInFolder = useMemo(() => {
+    return standaloneReceipts.filter(r =>
+      r.receiptFolderId !== undefined &&
+      (r.receiptFolderId ?? null) === currentFolderId &&
+      isSameMonth(getStandaloneDisplayDate(r), currentMonth)
+    );
+  }, [standaloneReceipts, currentFolderId, currentMonth]);
+
   /** Map of expenseId → Expense for quick lookup in linked receipt cards. */
   const expenseById = useMemo(() => {
     const map = new Map<string, Expense>();
@@ -496,6 +505,7 @@ export default function ReceiptsPage() {
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
       linkedExpenseIds: arrayUnion(expenseId),
+      receiptFolderId: currentFolderId,
       ...(isFirstLink ? { displayDate: expense.date } : {}),
     });
     batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
@@ -840,7 +850,7 @@ export default function ReceiptsPage() {
               <div
                 key={receipt.id}
                 draggable
-                onDragStart={() => { setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
+                onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
                 onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
                 className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
               >
@@ -906,15 +916,15 @@ export default function ReceiptsPage() {
       )}
 
       {/* Linked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && r.receiptFolderId === undefined && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseIds.length > 0 && r.receiptFolderId === undefined && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
                 draggable
-                onDragStart={() => { setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
+                onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
                 onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
                 className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
               >
@@ -1229,7 +1239,7 @@ export default function ReceiptsPage() {
       {/* Back button — also a drop target to move receipt to parent folder */}
       {currentFolderId && (
         <div
-          onDragOver={(e) => { if (draggedReceiptId) { e.preventDefault(); setDragOverFolderId('parent'); } }}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverFolderId('parent'); }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
           onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folderPath[folderPath.length - 2]?.id ?? null); }}
           className={`mb-4 inline-flex rounded-lg transition-all ${dragOverFolderId === 'parent' ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-400 px-2' : ''}`}
@@ -1261,7 +1271,7 @@ export default function ReceiptsPage() {
                 {currentFolders.map((folder, idx) => (
                   <div
                     key={folder.id}
-                    onDragOver={(e) => { if (draggedReceiptId) { e.preventDefault(); setDragOverFolderId(folder.id); } }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverFolderId(folder.id); }}
                     onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
                     onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folder.id); }}
                     className={`border rounded-lg p-3 flex flex-col gap-2 transition-all ${dragOverFolderId === folder.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 scale-105 shadow-md' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700'}`}
@@ -1312,7 +1322,7 @@ export default function ReceiptsPage() {
           )}
 
           {/* ── Receipts ── */}
-          {currentReceipts.length > 0 && (
+          {(currentReceipts.length > 0 || currentStandaloneInFolder.length > 0) && (
             <section>
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -1320,7 +1330,7 @@ export default function ReceiptsPage() {
                   <div
                     key={expense.id}
                     draggable
-                    onDragStart={() => { setDraggedReceiptId(expense.id); setDraggedReceiptType('existing'); }}
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', expense.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(expense.id); setDraggedReceiptType('existing'); }}
                     onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
                     className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === expense.id ? 'opacity-40 scale-95' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
                   >
@@ -1423,6 +1433,86 @@ export default function ReceiptsPage() {
                         >
                           {removingId === expense.id ? '解除中...' : '添付を解除'}
                         </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {currentStandaloneInFolder.map(receipt => (
+                  <div
+                    key={receipt.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', receipt.id); e.dataTransfer.effectAllowed = 'move'; setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
+                    onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
+                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-indigo-200 dark:border-indigo-800'} cursor-grab active:cursor-grabbing`}
+                  >
+                    <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
+                        className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
+                      >
+                        {selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}
+                      </button>
+                      <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
+                        {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            <span className="font-semibold text-sm">PDFファイル</span>
+                          </div>
+                        ) : (
+                          <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
+                        )}
+                      </a>
+                      <span className="absolute top-2 right-2 text-xs bg-indigo-600 text-white px-1.5 py-0.5 rounded">🔗</span>
+                    </div>
+                    <div className="p-3 flex flex-col gap-2">
+                      {renamingStandaloneId === receipt.id ? (
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={renameStandaloneValue}
+                            onChange={(e) => setRenameStandaloneValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleRenameStandalone(receipt.id); if (e.key === 'Escape') setRenamingStandaloneId(null); }}
+                            autoFocus
+                            placeholder="ファイル名を入力"
+                            className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                          />
+                          <button onClick={() => handleRenameStandalone(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
+                          <button onClick={() => setRenamingStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded">✕</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
+                          <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
+                        </div>
+                      )}
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                      <div className="flex flex-col gap-1 pt-1 border-t dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">紐付き支出 ({receipt.linkedExpenseIds.length}件)</span>
+                          <button onClick={() => openLinkModal(receipt.id)} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">＋ 追加</button>
+                        </div>
+                        {receipt.linkedExpenseIds.map(eid => {
+                          const exp = expenseById.get(eid);
+                          return (
+                            <div key={eid} className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 rounded px-2 py-0.5">
+                              <span className="text-xs text-gray-700 dark:text-gray-300 flex-grow truncate">
+                                {exp ? `${format(exp.date.toDate(), 'MM/dd')} ${exp.store || '(店名なし)'} ¥${exp.amount.toLocaleString()}` : eid}
+                              </span>
+                              <button
+                                title="この支出との紐付けを解除"
+                                onClick={() => handleUnlinkReceipt(receipt, eid)}
+                                className="flex-shrink-0 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold"
+                              >✕</button>
+                            </div>
+                          );
+                        })}
+                        <button
+                          onClick={() => handleDeleteStandaloneReceipt(receipt)}
+                          disabled={deletingStandaloneId === receipt.id}
+                          className="mt-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 text-left"
+                        >{deletingStandaloneId === receipt.id ? '削除中...' : '🗑 ファイルを削除'}</button>
                       </div>
                     </div>
                   </div>
