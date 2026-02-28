@@ -2,15 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, query, onSnapshot, where, getDocs, Timestamp, doc, updateDoc, orderBy } from 'firebase/firestore';
+import {
+  collection, addDoc, query, onSnapshot, where, getDocs,
+  Timestamp, doc, updateDoc, orderBy, deleteDoc, serverTimestamp, writeBatch
+} from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegularPayment } from '@/types/RegularPayment';
 import { RegularPaymentGroup } from '@/types/RegularPaymentGroup';
-import { getMonth, getYear, startOfMonth, endOfMonth, addMonths, addYears } from 'date-fns';
+import { startOfMonth, endOfMonth, addMonths, addYears } from 'date-fns';
 
 interface Props {
   month: Date;
 }
+
+type UndoEntry = {
+  actionId: string;       // Firestore doc ID in regularPaymentActions
+  regularPaymentId: string;
+  expenseId: string;
+  prevNextPaymentDate: Timestamp;
+  name: string;
+  amount: number;
+};
 
 const RegularPaymentProcessor = ({ month }: Props) => {
   const { user, loading: authLoading } = useAuth();
@@ -20,12 +32,19 @@ const RegularPaymentProcessor = ({ month }: Props) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Selection for bulk record
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [recording, setRecording] = useState(false);
+
+  // Undo banner entries
+  const [undoEntries, setUndoEntries] = useState<UndoEntry[]>([]);
+
   useEffect(() => {
     if (authLoading || !user) return;
 
     const templatesQuery = query(collection(db, 'users', user.uid, 'regularPayments'));
     const unsubTemplates = onSnapshot(templatesQuery, (snapshot) => {
-      const fetchedTemplates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RegularPayment));
+      const fetchedTemplates = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPayment));
       setTemplates(fetchedTemplates);
       setLoading(false);
     }, err => {
@@ -36,87 +55,167 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
     const groupsQuery = query(collection(db, 'users', user.uid, 'regularPaymentGroups'), orderBy('name'));
     const unsubGroups = onSnapshot(groupsQuery, (snapshot) => {
-      const fetchedGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RegularPaymentGroup));
-      setGroups(fetchedGroups);
-    }, err => {
-      console.error(err);
+      setGroups(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RegularPaymentGroup)));
     });
 
-    return () => {
-      unsubTemplates();
-      unsubGroups();
-    };
+    return () => { unsubTemplates(); unsubGroups(); };
   }, [user, authLoading]);
 
   useEffect(() => {
     const start = startOfMonth(month);
     const end = endOfMonth(month);
-
     const upcoming = templates.filter(t => {
       if (!t.nextPaymentDate) return false;
-      const nextPaymentDate = t.nextPaymentDate.toDate();
-      return nextPaymentDate >= start && nextPaymentDate <= end;
+      const d = t.nextPaymentDate.toDate();
+      return d >= start && d <= end;
     });
-
     setUpcomingPayments(upcoming);
+    setSelectedIds(new Set());
   }, [templates, month]);
 
-  const handleRecordExpense = async (template: RegularPayment) => {
-    if (!user) return;
-
+  // ── Core: record a single regular payment ──────────────────
+  const recordOne = async (template: RegularPayment): Promise<UndoEntry | null> => {
+    if (!user) return null;
     const expenseDate = template.nextPaymentDate.toDate();
 
+    // Duplicate check
+    const q = query(
+      collection(db, 'users', user.uid, 'expenses'),
+      where('regularPaymentId', '==', template.id),
+      where('date', '==', Timestamp.fromDate(expenseDate))
+    );
+    const existing = await getDocs(q);
+    if (!existing.empty) return null; // already recorded – skip silently
+
+    const prevNextPaymentDate = template.nextPaymentDate;
+
+    // Add expense
+    const expenseRef = await addDoc(collection(db, 'users', user.uid, 'expenses'), {
+      date: Timestamp.fromDate(expenseDate),
+      amount: template.amount,
+      categoryId: template.categoryId,
+      paymentMethodId: template.paymentMethodId,
+      store: template.name,
+      memo: '定期支出からの自動記録',
+      regularPaymentId: template.id,
+      isChecked: false,
+    });
+
+    // Advance nextPaymentDate
+    const newNextPaymentDate = template.frequency === 'months'
+      ? addMonths(expenseDate, template.interval)
+      : addYears(expenseDate, template.interval);
+    await updateDoc(doc(db, 'users', user.uid, 'regularPayments', template.id), {
+      nextPaymentDate: Timestamp.fromDate(newNextPaymentDate),
+    });
+
+    // Save undo action record
+    const actionRef = await addDoc(collection(db, 'users', user.uid, 'regularPaymentActions'), {
+      type: 'regular_payment_record',
+      regularPaymentId: template.id,
+      expenseId: expenseRef.id,
+      prevNextPaymentDate,
+      name: template.name,
+      amount: template.amount,
+      undone: false,
+      createdAt: serverTimestamp(),
+    });
+
+    return {
+      actionId: actionRef.id,
+      regularPaymentId: template.id,
+      expenseId: expenseRef.id,
+      prevNextPaymentDate,
+      name: template.name,
+      amount: template.amount,
+    };
+  };
+
+  // ── Record single ───────────────────────────────────────────
+  const handleRecordOne = async (template: RegularPayment) => {
+    setRecording(true);
     try {
-      // Check if an expense has already been recorded for this specific payment date
-      const q = query(
-        collection(db, 'users', user.uid, 'expenses'),
-        where('regularPaymentId', '==', template.id),
-        where('date', '==', Timestamp.fromDate(expenseDate))
-      );
-      const existing = await getDocs(q);
-      if (!existing.empty) {
+      const entry = await recordOne(template);
+      if (entry) {
+        setUndoEntries(prev => [entry, ...prev]);
+      } else {
         alert('この支出は既に記録されています。');
-        return;
       }
-
-      // Add the expense
-      await addDoc(collection(db, 'users', user.uid, 'expenses'), {
-        date: Timestamp.fromDate(expenseDate),
-        amount: template.amount,
-        categoryId: template.categoryId,
-        paymentMethodId: template.paymentMethodId,
-        store: template.name,
-        memo: '定期支出からの自動記録',
-        regularPaymentId: template.id,
-        isChecked: false,
-      });
-
-      // Calculate the next payment date
-      let newNextPaymentDate;
-      if (template.frequency === 'months') {
-        newNextPaymentDate = addMonths(expenseDate, template.interval);
-      } else { // years
-        newNextPaymentDate = addYears(expenseDate, template.interval);
-      }
-
-      // Update the regular payment with the new next payment date
-      const paymentRef = doc(db, 'users', user.uid, 'regularPayments', template.id);
-      await updateDoc(paymentRef, {
-        nextPaymentDate: Timestamp.fromDate(newNextPaymentDate)
-      });
-
-      alert(`${template.name} を支出として記録しました。`);
     } catch (err) {
       console.error(err);
-      alert('支出の記録に失敗しました。');
+      alert('記録に失敗しました。');
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  // ── Bulk record ─────────────────────────────────────────────
+  const handleBulkRecord = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の定期支出をまとめて記録しますか？`)) return;
+    setRecording(true);
+    const newEntries: UndoEntry[] = [];
+    try {
+      for (const id of Array.from(selectedIds)) {
+        const t = upcomingPayments.find(p => p.id === id);
+        if (!t) continue;
+        const entry = await recordOne(t);
+        if (entry) newEntries.push(entry);
+      }
+      setUndoEntries(prev => [...newEntries, ...prev]);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error(err);
+      alert('一部の記録に失敗しました。');
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  // ── Undo ────────────────────────────────────────────────────
+  const handleUndo = async (entry: UndoEntry) => {
+    if (!user) return;
+    if (!confirm(`「${entry.name}」の記録を取り消しますか？`)) return;
+    try {
+      // Delete the expense
+      await deleteDoc(doc(db, 'users', user.uid, 'expenses', entry.expenseId));
+      // Revert nextPaymentDate
+      await updateDoc(doc(db, 'users', user.uid, 'regularPayments', entry.regularPaymentId), {
+        nextPaymentDate: entry.prevNextPaymentDate,
+      });
+      // Mark action as undone
+      await updateDoc(doc(db, 'users', user.uid, 'regularPaymentActions', entry.actionId), {
+        undone: true,
+      });
+      setUndoEntries(prev => prev.filter(e => e.actionId !== entry.actionId));
+    } catch (err) {
+      console.error(err);
+      alert('取り消しに失敗しました。');
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === upcomingPayments.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(upcomingPayments.map(p => p.id)));
     }
   };
 
   const handleToggleCheck = async (payment: RegularPayment) => {
     if (!user) return;
-    const paymentRef = doc(db, 'users', user.uid, 'regularPayments', payment.id);
     try {
-      await updateDoc(paymentRef, { isChecked: !payment.isChecked });
+      await updateDoc(doc(db, 'users', user.uid, 'regularPayments', payment.id), {
+        isChecked: !payment.isChecked,
+      });
     } catch (err) {
       console.error(err);
       setError('チェック状態の更新に失敗しました。');
@@ -125,12 +224,11 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
   if (loading) return <p>読み込み中...</p>;
 
-  // Calculate totals and group items
   const totalAmount = upcomingPayments.reduce((sum, t) => sum + t.amount, 0);
+  const selectedAmount = upcomingPayments.filter(p => selectedIds.has(p.id)).reduce((sum, p) => sum + p.amount, 0);
 
   const groupedPayments = new Map<string, RegularPayment[]>();
   const noGroupPayments: RegularPayment[] = [];
-
   upcomingPayments.forEach(t => {
     if (t.groupId && groups.some(g => g.id === t.groupId)) {
       if (!groupedPayments.has(t.groupId)) groupedPayments.set(t.groupId, []);
@@ -142,66 +240,153 @@ const RegularPaymentProcessor = ({ month }: Props) => {
 
   return (
     <div className="bg-white dark:bg-black p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">今月の定期支出</h2>
         <p className="text-lg font-bold text-gray-700 dark:text-gray-200">合計: ¥{totalAmount.toLocaleString()}</p>
       </div>
-      {error && <p className="text-red-500">{error}</p>}
+
+      {/* Undo banners */}
+      {undoEntries.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {undoEntries.map(entry => (
+            <div key={entry.actionId} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded flex justify-between items-center">
+              <span className="text-sm text-gray-700 dark:text-gray-200">
+                ✅ 「{entry.name}」を記録しました (¥{entry.amount.toLocaleString()})
+              </span>
+              <div className="flex gap-2 ml-2 shrink-0">
+                <button
+                  onClick={() => handleUndo(entry)}
+                  className="px-2 py-1 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >取り消す</button>
+                <button
+                  onClick={() => setUndoEntries(prev => prev.filter(e => e.actionId !== entry.actionId))}
+                  className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                >閉じる</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="text-red-500 mb-3">{error}</p>}
+
       {upcomingPayments.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400">今月支払う予定の定期支出はありません。</p>
       ) : (
-        <div className="space-y-6">
-          {groups.map(g => {
-            const payments = groupedPayments.get(g.id);
-            if (!payments || payments.length === 0) return null;
-            const groupTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+        <>
+          {/* Bulk action bar */}
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === upcomingPayments.length && upcomingPayments.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded"
+              />
+              全て選択 ({selectedIds.size}/{upcomingPayments.length})
+            </label>
+            {selectedIds.size > 0 && (
+              <>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  選択合計: ¥{selectedAmount.toLocaleString()}
+                </span>
+                <button
+                  onClick={handleBulkRecord}
+                  disabled={recording}
+                  className="ml-auto px-4 py-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition-colors"
+                >
+                  {recording ? '記録中...' : `${selectedIds.size}件をまとめて記録`}
+                </button>
+              </>
+            )}
+          </div>
 
-            return (
-              <div key={g.id} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between items-center">
-                  <span>{g.name}</span>
-                  <span className="text-sm">小計: ¥{groupTotal.toLocaleString()}</span>
+          <div className="space-y-6">
+            {groups.map(g => {
+              const payments = groupedPayments.get(g.id);
+              if (!payments || payments.length === 0) return null;
+              const groupTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+              return (
+                <div key={g.id} className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 flex justify-between items-center">
+                    <span>{g.name}</span>
+                    <span className="text-sm">小計: ¥{groupTotal.toLocaleString()}</span>
+                  </div>
+                  <ul className="divide-y dark:divide-gray-700">
+                    {payments.map(template => (
+                      <PaymentItem
+                        key={template.id}
+                        template={template}
+                        selected={selectedIds.has(template.id)}
+                        onToggleSelect={() => toggleSelect(template.id)}
+                        onToggleCheck={handleToggleCheck}
+                        onRecord={handleRecordOne}
+                        recording={recording}
+                      />
+                    ))}
+                  </ul>
                 </div>
-                <ul className="divide-y">
-                  {payments.map(template => (
-                    <PaymentItem key={template.id} template={template} onToggleCheck={handleToggleCheck} onRecord={handleRecordExpense} />
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {noGroupPayments.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-               <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b flex justify-between items-center">
+            {noGroupPayments.length > 0 && (
+              <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 flex justify-between items-center">
                   <span>グループなし</span>
                   <span className="text-sm">小計: ¥{noGroupPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
                 </div>
-              <ul className="divide-y">
-                {noGroupPayments.map(template => (
-                  <PaymentItem key={template.id} template={template} onToggleCheck={handleToggleCheck} onRecord={handleRecordExpense} />
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+                <ul className="divide-y dark:divide-gray-700">
+                  {noGroupPayments.map(template => (
+                    <PaymentItem
+                      key={template.id}
+                      template={template}
+                      selected={selectedIds.has(template.id)}
+                      onToggleSelect={() => toggleSelect(template.id)}
+                      onToggleCheck={handleToggleCheck}
+                      onRecord={handleRecordOne}
+                      recording={recording}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
 };
 
-const PaymentItem = ({ template, onToggleCheck, onRecord }: { template: RegularPayment, onToggleCheck: (t: RegularPayment) => void, onRecord: (t: RegularPayment) => void }) => {
-  const textStyle = template.isChecked ? { color: 'red' } : {};
+const PaymentItem = ({
+  template, selected, onToggleSelect, onToggleCheck, onRecord, recording
+}: {
+  template: RegularPayment;
+  selected: boolean;
+  onToggleSelect: () => void;
+  onToggleCheck: (t: RegularPayment) => void;
+  onRecord: (t: RegularPayment) => void;
+  recording: boolean;
+}) => {
   const paymentDate = template.nextPaymentDate.toDate();
   return (
-    <li style={textStyle} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:bg-gray-900 bg-white dark:bg-black">
-      <div>
-        <p className="font-semibold">{template.name}</p>
-        <p className="text-sm">
-          {paymentDate.toLocaleDateString()} - ¥{template.amount.toLocaleString()}
-        </p>
+    <li className={`flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-black transition-colors ${template.isChecked ? 'text-red-500' : ''}`}>
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Selection checkbox */}
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          onClick={e => e.stopPropagation()}
+          className="w-4 h-4 rounded shrink-0"
+        />
+        <div className="min-w-0">
+          <p className="font-semibold truncate">{template.name}</p>
+          <p className="text-sm">
+            {paymentDate.toLocaleDateString('ja-JP')} — ¥{template.amount.toLocaleString()}
+          </p>
+        </div>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2 ml-2 shrink-0">
         <button
           onClick={() => onToggleCheck(template)}
           className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
@@ -210,7 +395,8 @@ const PaymentItem = ({ template, onToggleCheck, onRecord }: { template: RegularP
         </button>
         <button
           onClick={() => onRecord(template)}
-          className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
+          disabled={recording}
+          className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-bold py-1 px-3 rounded text-sm transition-colors"
         >
           記録する
         </button>
