@@ -45,6 +45,8 @@ const ExpenseForm = ({ expenseToEdit, onFormClose, initialData, setInitialData }
   
   const [isTransfer, setIsTransfer] = useState(false);
 
+  const isEditMode = !!expenseToEdit;
+
   // Refs for focus management
   const dateRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
