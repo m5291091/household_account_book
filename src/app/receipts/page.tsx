@@ -10,6 +10,8 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'fi
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
 import { StandaloneReceipt } from '@/types/Receipt';
+import { Category } from '@/types/Category';
+import { PaymentMethod } from '@/types/PaymentMethod';
 import { format, addMonths, subMonths, isSameMonth } from 'date-fns';
 import Link from 'next/link';
 
@@ -21,6 +23,10 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>('date_desc');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Master data
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
 
   // UI states
   const [renamingReceiptId, setRenamingReceiptId] = useState<string | null>(null);
@@ -100,7 +106,16 @@ export default function ReceiptsPage() {
       }
     );
 
-    return () => { unsubReceipts(); unsubStandalone(); };
+    const unsubCategories = onSnapshot(
+      query(collection(db, 'users', user.uid, 'categories')),
+      s => setCategories(s.docs.map(d => ({ id: d.id, ...d.data() } as Category)))
+    );
+    const unsubPaymentMethods = onSnapshot(
+      query(collection(db, 'users', user.uid, 'paymentMethods')),
+      s => setPaymentMethods(s.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod)))
+    );
+
+    return () => { unsubReceipts(); unsubStandalone(); unsubCategories(); unsubPaymentMethods(); };
   }, [user, authLoading]);
 
   // Receipts for the current month, sorted
@@ -157,7 +172,7 @@ export default function ReceiptsPage() {
         </button>
         {activePopoverId === expenseId && (
           <div
-            className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-30"
+            className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-30"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Speech bubble arrow */}
@@ -165,25 +180,47 @@ export default function ReceiptsPage() {
             <div className="px-3 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
               <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">紐付けられた支出（{linkedIds.length}件）</p>
             </div>
-            <div className="max-h-52 overflow-y-auto rounded-b-xl">
+            <div className="max-h-64 overflow-y-auto rounded-b-xl">
               {linkedIds.map(eid => {
                 const e = expenseById.get(eid);
                 if (!e) return null;
                 const isCurrent = eid === expenseId;
+                const categoryName = categories.find(c => c.id === e.categoryId)?.name ?? e.categoryId;
+                const paymentName = paymentMethods.find(p => p.id === e.paymentMethodId)?.name ?? e.paymentMethodId;
                 return (
                   <div
                     key={eid}
-                    className={`px-3 py-2 text-xs flex items-center justify-between gap-2 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    className={`px-3 py-2.5 text-xs border-b last:border-b-0 border-gray-100 dark:border-gray-700/50 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                   >
-                    <div className="flex-grow min-w-0">
-                      <div className={`font-medium truncate flex items-center gap-1 ${isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {isCurrent && <span className="text-indigo-400">●</span>}
+                    {/* Row 1: store name + edit button */}
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className={`font-semibold truncate flex items-center gap-1 ${isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-100'}`}>
+                        {isCurrent && <span className="text-indigo-400 text-[10px]">●</span>}
                         {e.store || '(店名なし)'}
                       </div>
-                      <div className="text-gray-400 dark:text-gray-500 mt-0.5">{format(e.date.toDate(), 'yyyy/MM/dd')} · {e.categoryId}</div>
+                      <Link
+                        href={`/dashboard/edit-expense/${eid}`}
+                        onClick={() => setActivePopoverId(null)}
+                        className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+                      >
+                        編集
+                      </Link>
                     </div>
-                    <div className={`flex-shrink-0 font-semibold ${isCurrent ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                      ¥{e.amount.toLocaleString()}
+                    {/* Row 2: date + amount */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy/MM/dd')}</span>
+                      <span className={`font-semibold ${isCurrent ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                        ¥{e.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    {/* Row 3: category + payment method */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                        🏷 {categoryName}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                        💳 {paymentName}
+                      </span>
                     </div>
                   </div>
                 );
