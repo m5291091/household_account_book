@@ -20,11 +20,10 @@ const DashboardSummary = ({ month }: { month: Date }) => {
 
   const monthStart = useMemo(() => startOfMonth(month), [month]);
   const monthEnd = useMemo(() => endOfMonth(month), [month]);
-  const { expenses, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, monthStart, monthEnd);
-  const { expenses: allExpensesWithTransfers } = useExpenses(user?.uid, monthStart, monthEnd, true);
+  const { expenses: allExpensesWithTransfers, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, monthStart, monthEnd, true);
   const totalExpenses = useMemo(
-    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
-    [expenses]
+    () => allExpensesWithTransfers.filter(e => !e.isTransfer).reduce((sum, e) => sum + e.amount, 0),
+    [allExpensesWithTransfers]
   );
   const totalTransferExcluded = useMemo(
     () => allExpensesWithTransfers.filter(e => e.isTransfer).reduce((sum, e) => sum + e.amount, 0),

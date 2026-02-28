@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useMemo } from 'react';
 import { useIncomeByCategory } from '@/hooks/useIncomeByCategory';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -12,8 +13,8 @@ const generateHslColor = (index: number, total: number) => {
 };
 
 const IncomeCategoryChart = ({ month }: { month: Date }) => {
-  const startDate = startOfMonth(month);
-  const endDate = endOfMonth(month);
+  const startDate = useMemo(() => startOfMonth(month), [month]);
+  const endDate = useMemo(() => endOfMonth(month), [month]);
   const { data, loading, error } = useIncomeByCategory(startDate, endDate);
 
   if (loading) return <div className="text-center p-4">読み込み中...</div>;
