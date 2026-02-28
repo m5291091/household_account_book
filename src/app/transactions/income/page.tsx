@@ -49,7 +49,7 @@ const IncomePage = () => {
               <IncomeForm ref={incomeFormRef} incomeToEdit={incomeToEdit} onFormClose={handleCloseIncomeForm} />
             </div>
             <div className="space-y-8">
-              <IncomeList onEditIncome={handleEditIncome} />
+              <IncomeList onEditIncome={handleEditIncome} month={currentMonth} />
             </div>
           </div>
         </div>

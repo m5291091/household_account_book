@@ -10,16 +10,22 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 interface IncomeListProps {
   onEditIncome: (income: Income) => void;
+  month: Date;
 }
 
-const IncomeList = ({ onEditIncome }: IncomeListProps) => {
+const IncomeList = ({ onEditIncome, month }: IncomeListProps) => {
   const { user } = useAuth();
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(startOfMonth(month), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(month), 'yyyy-MM-dd'));
+
+  useEffect(() => {
+    setStartDate(format(startOfMonth(month), 'yyyy-MM-dd'));
+    setEndDate(format(endOfMonth(month), 'yyyy-MM-dd'));
+  }, [month]);
 
   useEffect(() => {
     if (!user || !startDate || !endDate) {
