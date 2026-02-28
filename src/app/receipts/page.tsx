@@ -45,6 +45,7 @@ export default function ReceiptsPage() {
   const [linkModalSearch, setLinkModalSearch] = useState('');
   const [linkModalDateFrom, setLinkModalDateFrom] = useState('');
   const [linkModalDateTo, setLinkModalDateTo] = useState('');
+  const [linkModalSelected, setLinkModalSelected] = useState<Set<string>>(new Set());
   const [deletingStandaloneId, setDeletingStandaloneId] = useState<string | null>(null);
   const [renamingStandaloneId, setRenamingStandaloneId] = useState<string | null>(null);
   const [renameStandaloneValue, setRenameStandaloneValue] = useState('');
@@ -277,6 +278,7 @@ export default function ReceiptsPage() {
     setLinkModalSearch('');
     setLinkModalDateFrom('');
     setLinkModalDateTo('');
+    setLinkModalSelected(new Set());
     try {
       const snap = await getDocs(
         query(collection(db, 'users', user.uid, 'expenses'), orderBy('date', 'desc'), limit(200))
@@ -289,32 +291,48 @@ export default function ReceiptsPage() {
     }
   };
 
-  const handleLinkReceipt = async (expenseId: string) => {
-    if (!user || !linkingReceiptId) return;
+  /** Link the standalone receipt to ALL selected expenses in one batch. */
+  const handleLinkReceipt = async () => {
+    if (!user || !linkingReceiptId || linkModalSelected.size === 0) return;
     const receipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
-    const expense = linkModalExpenses.find(e => e.id === expenseId);
-    if (!receipt || !expense) return;
+    if (!receipt) return;
 
-    // Confirm if already linked to one or more expenses
+    const selectedExpenses = linkModalExpenses.filter(e => linkModalSelected.has(e.id));
+
+    // Warn if receipt is already linked (adding more)
     if (receipt.linkedExpenseIds.length > 0) {
-      if (!confirm(`このファイルはすでに ${receipt.linkedExpenseIds.length} 件の支出に紐付けられています。\n追加で紐付けますか？`)) return;
+      if (!confirm(
+        `このファイルはすでに ${receipt.linkedExpenseIds.length} 件の支出に紐付けられています。\n` +
+        `さらに ${selectedExpenses.length} 件を追加で紐付けますか？`
+      )) return;
     }
-    // Confirm if target expense already has a different receipt attached
-    if (expense.receiptUrl && expense.receiptUrl.trim() !== '' && expense.receiptUrl !== receipt.fileUrl) {
-      if (!confirm(`「${expense.store || '(店名なし)'}」には既に別のレシートが添付されています。上書きしますか？`)) return;
+
+    // Warn if any selected expense already has a DIFFERENT receipt
+    const overwriteTargets = selectedExpenses.filter(
+      e => e.receiptUrl && e.receiptUrl.trim() !== '' && e.receiptUrl !== receipt.fileUrl
+    );
+    if (overwriteTargets.length > 0) {
+      const names = overwriteTargets.map(e => `「${e.store || '(店名なし)'}」`).join('、');
+      if (!confirm(`${names} には既に別のレシートが添付されています。上書きしますか？`)) return;
     }
+
     const isFirstLink = receipt.linkedExpenseIds.length === 0;
     const batch = writeBatch(db);
+    // Update standalone receipt: add all selected IDs at once
     batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
-      linkedExpenseIds: arrayUnion(expenseId),
-      ...(isFirstLink ? { displayDate: expense.date } : {}),
+      linkedExpenseIds: arrayUnion(...selectedExpenses.map(e => e.id)),
+      ...(isFirstLink ? { displayDate: selectedExpenses[0].date } : {}),
     });
-    batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
-      receiptUrl: receipt.fileUrl,
-      receiptName: receipt.fileName,
+    // Update each selected expense
+    selectedExpenses.forEach(expense => {
+      batch.update(doc(db, 'users', user.uid, 'expenses', expense.id), {
+        receiptUrl: receipt.fileUrl,
+        receiptName: receipt.fileName,
+      });
     });
     await batch.commit();
     setLinkingReceiptId(null);
+    setLinkModalSelected(new Set());
   };
 
   const handleUnlinkReceipt = async (receipt: StandaloneReceipt, expenseId: string) => {
@@ -949,9 +967,10 @@ export default function ReceiptsPage() {
       {linkingReceiptId && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setLinkingReceiptId(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setLinkingReceiptId(null); setLinkModalSelected(new Set()); } }}
         >
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            {/* Header */}
             <div className="p-4 border-b dark:border-gray-700 flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">支出と紐付け</h3>
@@ -959,13 +978,17 @@ export default function ReceiptsPage() {
                   const linkingReceipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
                   return linkingReceipt && linkingReceipt.linkedExpenseIds.length > 0 ? (
                     <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-                      現在 {linkingReceipt.linkedExpenseIds.length} 件に紐付き済み — 追加で紐付けできます
+                      現在 {linkingReceipt.linkedExpenseIds.length} 件に紐付き済み — 追加選択できます
                     </p>
-                  ) : null;
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">チェックして一括紐付け</p>
+                  );
                 })()}
               </div>
-              <button onClick={() => setLinkingReceiptId(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              <button onClick={() => { setLinkingReceiptId(null); setLinkModalSelected(new Set()); }} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
+
+            {/* Filters */}
             <div className="p-3 border-b dark:border-gray-700 space-y-2">
               <input
                 type="text"
@@ -980,7 +1003,9 @@ export default function ReceiptsPage() {
                 <input type="date" value={linkModalDateTo} onChange={(e) => setLinkModalDateTo(e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black" />
               </div>
             </div>
-            <div className="overflow-y-auto flex-grow p-3 space-y-2">
+
+            {/* Expense list with checkboxes */}
+            <div className="overflow-y-auto flex-grow p-3 space-y-1.5">
               {linkModalLoading ? (
                 <p className="text-sm text-center text-gray-500 py-8">読み込み中...</p>
               ) : (
@@ -1001,33 +1026,71 @@ export default function ReceiptsPage() {
                   })
                   .map(e => {
                     const linkingReceipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
-                    const alreadyLinkedToThis = linkingReceipt?.linkedExpenseIds.includes(e.id) ?? false;
+                    const alreadyLinked = linkingReceipt?.linkedExpenseIds.includes(e.id) ?? false;
+                    const isSelected = linkModalSelected.has(e.id);
                     return (
-                      <button
+                      <label
                         key={e.id}
-                        onClick={() => handleLinkReceipt(e.id)}
-                        disabled={alreadyLinkedToThis}
-                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                          alreadyLinkedToThis
+                        className={`flex items-start gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                          alreadyLinked
                             ? 'border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 cursor-not-allowed opacity-70'
-                            : e.receiptUrl ? 'border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                            : isSelected
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-400'
+                            : e.receiptUrl && e.receiptUrl !== standaloneReceipts.find(r => r.id === linkingReceiptId)?.fileUrl
+                            ? 'border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
                             : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</span>
-                          {alreadyLinkedToThis && (
-                            <span className="text-xs bg-indigo-200 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 px-1.5 py-0.5 rounded">🔗 紐付き済</span>
-                          )}
-                          {!alreadyLinkedToThis && e.receiptUrl && (
-                            <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">�� 添付済</span>
-                          )}
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 accent-indigo-600 w-4 h-4 flex-shrink-0"
+                          disabled={alreadyLinked}
+                          checked={alreadyLinked || isSelected}
+                          onChange={() => {
+                            if (alreadyLinked) return;
+                            setLinkModalSelected(prev => {
+                              const next = new Set(prev);
+                              next.has(e.id) ? next.delete(e.id) : next.add(e.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <div className="flex-grow min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</span>
+                            {alreadyLinked && (
+                              <span className="text-xs bg-indigo-200 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 px-1.5 py-0.5 rounded">🔗 紐付き済</span>
+                            )}
+                            {!alreadyLinked && e.receiptUrl && e.receiptUrl !== standaloneReceipts.find(r => r.id === linkingReceiptId)?.fileUrl && (
+                              <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">📎 添付済</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
-                      </button>
+                      </label>
                     );
                   })
               )}
+            </div>
+
+            {/* Footer with confirm button */}
+            <div className="p-4 border-t dark:border-gray-700 flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {linkModalSelected.size > 0 ? `${linkModalSelected.size} 件を選択中` : '支出を選択してください'}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setLinkingReceiptId(null); setLinkModalSelected(new Set()); }}
+                  className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >キャンセル</button>
+                <button
+                  onClick={handleLinkReceipt}
+                  disabled={linkModalSelected.size === 0}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {linkModalSelected.size > 0 ? `${linkModalSelected.size} 件に紐付ける` : '紐付ける'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
