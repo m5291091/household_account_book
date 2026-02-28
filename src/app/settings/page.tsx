@@ -67,6 +67,12 @@ const SettingsPage = () => {
       href: '/settings/security',
       icon: '🔒',
     },
+    {
+      title: '貯金目標の設定',
+      description: '毎月の貯金額を固定金額または収入の割合で設定し、貯金先口座を紐づけます。',
+      href: '/settings/savings',
+      icon: '💰',
+    },
   ];
 
   return (

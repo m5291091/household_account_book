@@ -12,6 +12,7 @@ import { format, addMonths, subMonths } from 'date-fns';
 import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
 import CreditCardStatus from '@/components/dashboard/CreditCardStatus';
+import SavingsGoalStatus from '@/components/dashboard/SavingsGoalStatus';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
@@ -52,6 +53,7 @@ const DashboardPage = () => {
 
           <div className="space-y-8">
             <DashboardSummary month={currentMonth} />
+            <SavingsGoalStatus month={currentMonth} />
             <CreditCardStatus month={currentMonth} />
             <IncomeExpenseChart month={currentMonth} />
             <IncomeCategoryChart month={currentMonth} />
