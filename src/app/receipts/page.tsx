@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { db } from '@/lib/firebase/config';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { db, storage } from '@/lib/firebase/config';
 import {
   collection, query, onSnapshot, doc, updateDoc,
-  addDoc, deleteDoc, writeBatch,
+  addDoc, deleteDoc, writeBatch, getDocs, orderBy, limit, Timestamp,
 } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
+import { StandaloneReceipt } from '@/types/Receipt';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -46,6 +48,19 @@ export default function ReceiptsPage() {
   const [searchDateTo, setSearchDateTo] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
 
+  // Standalone receipt state
+  const [standaloneReceipts, setStandaloneReceipts] = useState<StandaloneReceipt[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [linkingReceiptId, setLinkingReceiptId] = useState<string | null>(null);
+  const [linkModalExpenses, setLinkModalExpenses] = useState<Expense[]>([]);
+  const [linkModalLoading, setLinkModalLoading] = useState(false);
+  const [linkModalSearch, setLinkModalSearch] = useState('');
+  const [linkModalDateFrom, setLinkModalDateFrom] = useState('');
+  const [linkModalDateTo, setLinkModalDateTo] = useState('');
+  const [deletingStandaloneId, setDeletingStandaloneId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (authLoading || !user) {
       if (!authLoading) setLoading(false);
@@ -70,7 +85,14 @@ export default function ReceiptsPage() {
       }
     );
 
-    return () => { unsubReceipts(); unsubFolders(); };
+    const unsubStandalone = onSnapshot(
+      query(collection(db, 'users', user.uid, 'receipts')),
+      (snapshot) => {
+        setStandaloneReceipts(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as StandaloneReceipt)));
+      }
+    );
+
+    return () => { unsubReceipts(); unsubFolders(); unsubStandalone(); };
   }, [user, authLoading]);
 
   // Breadcrumb path to current folder
@@ -271,6 +293,91 @@ export default function ReceiptsPage() {
     }
   };
 
+  // ── Standalone receipt handlers ────────────────────────────
+
+  const handleFileUpload = async (file: File) => {
+    if (!user) return;
+    setUploadingFile(true);
+    try {
+      const timestamp = Date.now();
+      const path = `receipts/${user.uid}/standalone/${timestamp}_${file.name}`;
+      const sRef = storageRef(storage, path);
+      await uploadBytes(sRef, file);
+      const fileUrl = await getDownloadURL(sRef);
+      await addDoc(collection(db, 'users', user.uid, 'receipts'), {
+        fileUrl,
+        fileName: file.name,
+        fileType: file.type,
+        storagePath: path,
+        uploadedAt: Timestamp.now(),
+        linkedExpenseId: null,
+      });
+    } catch (e) {
+      console.error(e);
+      alert('アップロードに失敗しました。');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const openLinkModal = async (receiptId: string) => {
+    if (!user) return;
+    setLinkingReceiptId(receiptId);
+    setLinkModalLoading(true);
+    setLinkModalSearch('');
+    setLinkModalDateFrom('');
+    setLinkModalDateTo('');
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'users', user.uid, 'expenses'), orderBy('date', 'desc'), limit(200))
+      );
+      setLinkModalExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense)));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLinkModalLoading(false);
+    }
+  };
+
+  const handleLinkReceipt = async (expenseId: string) => {
+    if (!user || !linkingReceiptId) return;
+    const receipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
+    if (!receipt) return;
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), { linkedExpenseId: expenseId });
+    batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
+      receiptUrl: receipt.fileUrl,
+      receiptName: receipt.fileName,
+    });
+    await batch.commit();
+    setLinkingReceiptId(null);
+  };
+
+  const handleUnlinkReceipt = async (receipt: StandaloneReceipt) => {
+    if (!user || !receipt.linkedExpenseId) return;
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', user.uid, 'receipts', receipt.id), { linkedExpenseId: null });
+    batch.update(doc(db, 'users', user.uid, 'expenses', receipt.linkedExpenseId), { receiptUrl: '' });
+    await batch.commit();
+  };
+
+  const handleDeleteStandaloneReceipt = async (receipt: StandaloneReceipt) => {
+    if (!user || !confirm(`「${receipt.fileName}」を削除しますか？`)) return;
+    setDeletingStandaloneId(receipt.id);
+    try {
+      await deleteObject(storageRef(storage, receipt.storagePath));
+      if (receipt.linkedExpenseId) {
+        await updateDoc(doc(db, 'users', user.uid, 'expenses', receipt.linkedExpenseId), { receiptUrl: '' });
+      }
+      await deleteDoc(doc(db, 'users', user.uid, 'receipts', receipt.id));
+    } catch (e) {
+      console.error(e);
+      alert('削除に失敗しました。');
+    } finally {
+      setDeletingStandaloneId(null);
+    }
+  };
+
   // ── Render ────────────────────────────────────────────────
 
   if (loading || authLoading) {
@@ -297,6 +404,115 @@ export default function ReceiptsPage() {
           支出を記録する
         </Link>
       </div>
+
+      {/* Upload zone */}
+      <div
+        className={`mb-5 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFileUpload(file); }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*,.pdf"
+          className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(file); e.target.value = ''; }}
+        />
+        {uploadingFile ? (
+          <p className="text-sm text-indigo-600 dark:text-indigo-400">アップロード中...</p>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 dark:text-gray-400">ここにファイルをドロップ、またはクリックして選択</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">対応形式: 画像・PDF</p>
+          </>
+        )}
+      </div>
+
+      {/* Unlinked standalone receipts */}
+      {standaloneReceipts.filter(r => r.linkedExpenseId === null).length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">未紐付きレシート</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {standaloneReceipts.filter(r => r.linkedExpenseId === null).map(receipt => (
+              <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
+                  <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
+                    {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-semibold text-sm">PDFファイル</span>
+                      </div>
+                    ) : (
+                      <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
+                    )}
+                  </a>
+                </div>
+                <div className="p-3 flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(receipt.uploadedAt.toDate(), 'yyyy年MM月dd日')}</span>
+                  <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
+                    <button
+                      onClick={() => openLinkModal(receipt.id)}
+                      className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-2 rounded"
+                    >支出と紐付け</button>
+                    <button
+                      onClick={() => handleDeleteStandaloneReceipt(receipt)}
+                      disabled={deletingStandaloneId === receipt.id}
+                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                    >{deletingStandaloneId === receipt.id ? '削除中...' : '削除'}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Linked standalone receipts */}
+      {standaloneReceipts.filter(r => r.linkedExpenseId !== null).length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {standaloneReceipts.filter(r => r.linkedExpenseId !== null).map(receipt => (
+              <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
+                  <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
+                    {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-semibold text-sm">PDFファイル</span>
+                      </div>
+                    ) : (
+                      <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
+                    )}
+                  </a>
+                </div>
+                <div className="p-3 flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(receipt.uploadedAt.toDate(), 'yyyy年MM月dd日')}</span>
+                  <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
+                    <button
+                      onClick={() => handleUnlinkReceipt(receipt)}
+                      className="flex-1 text-xs bg-amber-500 hover:bg-amber-600 text-white py-1 px-2 rounded"
+                    >支出から紐付け解除</button>
+                    <button
+                      onClick={() => handleDeleteStandaloneReceipt(receipt)}
+                      disabled={deletingStandaloneId === receipt.id}
+                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                    >{deletingStandaloneId === receipt.id ? '削除中...' : '削除'}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search panel */}
       <div className="mb-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-4 space-y-3">
@@ -681,6 +897,64 @@ export default function ReceiptsPage() {
         </div>
       )}
         </>
+      )}
+      {linkingReceiptId && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setLinkingReceiptId(null); }}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">支出と紐付け</h3>
+              <button onClick={() => setLinkingReceiptId(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="p-3 border-b dark:border-gray-700 space-y-2">
+              <input
+                type="text"
+                value={linkModalSearch}
+                onChange={(e) => setLinkModalSearch(e.target.value)}
+                placeholder="店名・メモで検索..."
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+              <div className="flex gap-2 items-center">
+                <input type="date" value={linkModalDateFrom} onChange={(e) => setLinkModalDateFrom(e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black" />
+                <span className="text-gray-400">〜</span>
+                <input type="date" value={linkModalDateTo} onChange={(e) => setLinkModalDateTo(e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black" />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-grow p-3 space-y-2">
+              {linkModalLoading ? (
+                <p className="text-sm text-center text-gray-500 py-8">読み込み中...</p>
+              ) : (
+                linkModalExpenses
+                  .filter(e => {
+                    if (linkModalSearch.trim()) {
+                      const q = linkModalSearch.trim().toLowerCase();
+                      const haystack = [e.store, e.memo].filter(Boolean).join(' ').toLowerCase();
+                      if (!haystack.includes(q)) return false;
+                    }
+                    if (linkModalDateFrom && e.date.toDate() < new Date(linkModalDateFrom)) return false;
+                    if (linkModalDateTo) {
+                      const to = new Date(linkModalDateTo);
+                      to.setHours(23, 59, 59, 999);
+                      if (e.date.toDate() > to) return false;
+                    }
+                    return true;
+                  })
+                  .map(e => (
+                    <button
+                      key={e.id}
+                      onClick={() => handleLinkReceipt(e.id)}
+                      className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
+                    </button>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
