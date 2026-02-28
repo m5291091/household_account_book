@@ -37,7 +37,7 @@ export default function ReceiptsPage() {
   const [renameValue, setRenameValue] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderScope, setNewFolderScope] = useState<'all' | 'this'>('all');
+  const [newFolderScope, setNewFolderScope] = useState<'all' | 'this'>('this');
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderValue, setRenameFolderValue] = useState('');
   const [movingReceiptId, setMovingReceiptId] = useState<string | null>(null);
@@ -249,39 +249,13 @@ export default function ReceiptsPage() {
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     const maxOrder = Math.max(-1, ...currentFolders.map(f => f.order));
-    const trimmedName = newFolderName.trim();
-
-    if (newFolderScope === 'all') {
-      // Create parent (all-months) + 12 monthly children
-      const parentRef = await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
-        name: trimmedName,
-        parentId: currentFolderId,
-        order: maxOrder + 1,
-        monthScope: null,
-      });
-      const batch = writeBatch(db);
-      for (let m = 1; m <= 12; m++) {
-        const childRef = doc(collection(db, 'users', user.uid, 'receiptFolders'));
-        batch.set(childRef, {
-          name: `${m}月の${trimmedName}`,
-          parentId: parentRef.id,
-          order: m - 1,
-          monthScope: m,
-        });
-      }
-      await batch.commit();
-    } else {
-      // Create single folder scoped to current month only
-      const currentMonthNum = currentMonth.getMonth() + 1;
-      await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
-        name: trimmedName,
-        parentId: currentFolderId,
-        order: maxOrder + 1,
-        monthScope: currentMonthNum,
-      });
-    }
+    await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
+      name: newFolderName.trim(),
+      parentId: currentFolderId,
+      order: maxOrder + 1,
+      monthScope: currentMonth.getMonth() + 1,
+    });
     setNewFolderName('');
-    setNewFolderScope('all');
     setCreatingFolder(false);
   };
 
@@ -1218,20 +1192,9 @@ export default function ReceiptsPage() {
               className="flex-grow px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-sm"
             />
           </div>
-          <div className="flex items-center gap-4 text-sm pl-6">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="radio" name="folderScope" value="all" checked={newFolderScope === 'all'} onChange={() => setNewFolderScope('all')} className="accent-yellow-500" />
-              <span className="font-medium">全ての月</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">（親フォルダ＋1〜12月のサブフォルダを自動作成）</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="radio" name="folderScope" value="this" checked={newFolderScope === 'this'} onChange={() => setNewFolderScope('this')} className="accent-yellow-500" />
-              <span className="font-medium">{format(currentMonth, 'M月')}のみ</span>
-            </label>
-          </div>
           <div className="flex gap-2 pl-6">
             <button onClick={handleCreateFolder} className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold rounded text-sm">作成</button>
-            <button onClick={() => { setCreatingFolder(false); setNewFolderScope('all'); }} className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 rounded text-sm">キャンセル</button>
+            <button onClick={() => setCreatingFolder(false)} className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 rounded text-sm">キャンセル</button>
           </div>
         </div>
       )}
