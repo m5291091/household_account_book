@@ -5,10 +5,23 @@ import { db } from '@/lib/firebase/config';
 import { collection, addDoc, query, onSnapshot, where, getDocs, Timestamp, doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegularIncome } from '@/types/RegularIncome';
-import { startOfMonth, endOfMonth, addMonths, addYears } from 'date-fns';
+import { startOfMonth, endOfMonth, addMonths, addYears, format } from 'date-fns';
 
 interface Props {
   month: Date;
+}
+
+interface IncomeCategory {
+  id: string;
+  name: string;
+}
+
+interface EditFormData {
+  name: string;
+  amount: string;
+  totalTaxableAmount: string;
+  category: string;
+  nextPaymentDate: string;
 }
 
 const RegularIncomeProcessor = ({ month }: Props) => {
@@ -17,6 +30,16 @@ const RegularIncomeProcessor = ({ month }: Props) => {
   const [upcomingIncomes, setUpcomingIncomes] = useState<RegularIncome[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<EditFormData>({
+    name: '',
+    amount: '',
+    totalTaxableAmount: '',
+    category: '',
+    nextPaymentDate: '',
+  });
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -32,8 +55,13 @@ const RegularIncomeProcessor = ({ month }: Props) => {
       setLoading(false);
     });
 
+    const unsubCategories = onSnapshot(query(collection(db, 'users', user.uid, 'incomeCategories')), (snapshot) => {
+      setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeCategory)));
+    });
+
     return () => {
       unsubTemplates();
+      unsubCategories();
     };
   }, [user, authLoading]);
 
@@ -49,6 +77,47 @@ const RegularIncomeProcessor = ({ month }: Props) => {
 
     setUpcomingIncomes(upcoming);
   }, [templates, month]);
+
+  const handleEditClick = (template: RegularIncome) => {
+    setEditingId(template.id);
+    setEditFormData({
+      name: template.name,
+      amount: String(template.amount),
+      totalTaxableAmount: String(template.totalTaxableAmount || ''),
+      category: template.category,
+      nextPaymentDate: template.nextPaymentDate ? format(template.nextPaymentDate.toDate(), 'yyyy-MM-dd') : '',
+    });
+    setEditError(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditError(null);
+  };
+
+  const handleEditSave = async (template: RegularIncome) => {
+    if (!user) return;
+    if (!editFormData.name || !editFormData.amount || !editFormData.category || !editFormData.nextPaymentDate) {
+      setEditError('すべての必須項目を入力してください。');
+      return;
+    }
+    try {
+      const nextPaymentDate = new Date(editFormData.nextPaymentDate);
+      await updateDoc(doc(db, 'users', user.uid, 'regularIncomes', template.id), {
+        name: editFormData.name.trim(),
+        amount: Number(editFormData.amount),
+        totalTaxableAmount: Number(editFormData.totalTaxableAmount) || 0,
+        category: editFormData.category,
+        nextPaymentDate: Timestamp.fromDate(nextPaymentDate),
+        paymentDay: nextPaymentDate.getDate(),
+      });
+      setEditingId(null);
+      setEditError(null);
+    } catch (err) {
+      console.error(err);
+      setEditError('更新に失敗しました。');
+    }
+  };
 
   const handleRecordIncome = async (template: RegularIncome) => {
     if (!user) return;
@@ -127,20 +196,91 @@ const RegularIncomeProcessor = ({ month }: Props) => {
         <ul className="space-y-3">
           {upcomingIncomes.map(template => {
             const paymentDate = template.nextPaymentDate.toDate();
+            const isEditing = editingId === template.id;
             return (
-              <li key={template.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-md">
-                <div>
-                  <p className="font-semibold">{template.name}</p>
-                  <p className="text-sm">
-                    {paymentDate.toLocaleDateString()} - ¥{template.amount.toLocaleString()}
-                  </p>
+              <li key={template.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">{template.name}</p>
+                    <p className="text-sm">
+                      {paymentDate.toLocaleDateString()} - ¥{template.amount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => isEditing ? handleEditCancel() : handleEditClick(template)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                    >
+                      {isEditing ? 'キャンセル' : '編集'}
+                    </button>
+                    <button
+                      onClick={() => handleRecordIncome(template)}
+                      className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
+                    >
+                      記録する
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleRecordIncome(template)}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
-                >
-                  記録する
-                </button>
+                {isEditing && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">名称</label>
+                        <input
+                          type="text"
+                          value={editFormData.name}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">差引支給額</label>
+                        <input
+                          type="number"
+                          value={editFormData.amount}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, amount: e.target.value }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">課税合計</label>
+                        <input
+                          type="number"
+                          value={editFormData.totalTaxableAmount}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, totalTaxableAmount: e.target.value }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">カテゴリー</label>
+                        <select
+                          value={editFormData.category}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        >
+                          <option value="">カテゴリーを選択</option>
+                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">次回受取日</label>
+                        <input
+                          type="date"
+                          value={editFormData.nextPaymentDate}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, nextPaymentDate: e.target.value }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        />
+                      </div>
+                    </div>
+                    {editError && <p className="text-red-500 text-xs">{editError}</p>}
+                    <button
+                      onClick={() => handleEditSave(template)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded text-sm"
+                    >
+                      保存する
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
