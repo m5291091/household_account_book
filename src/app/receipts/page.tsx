@@ -996,7 +996,7 @@ export default function ReceiptsPage() {
                       onClick={e => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
                       className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
                     >{selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}</button>
-                    <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer" draggable={false}>
                       {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1005,7 +1005,7 @@ export default function ReceiptsPage() {
                           <span className="font-semibold text-sm">PDFファイル</span>
                         </div>
                       ) : (
-                        <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
+                        <img src={receipt.fileUrl} alt={receipt.fileName} draggable={false} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
                       )}
                     </a>
                   </div>
@@ -1069,7 +1069,7 @@ export default function ReceiptsPage() {
                         onClick={e => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
                         className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
                       >{selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}</button>
-                      <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer" draggable={false}>
                         {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1078,7 +1078,7 @@ export default function ReceiptsPage() {
                             <span className="font-semibold text-sm">PDFファイル</span>
                           </div>
                         ) : (
-                          <img src={receipt.fileUrl} alt={receipt.fileName} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
+                          <img src={receipt.fileUrl} alt={receipt.fileName} draggable={false} className="absolute inset-0 w-full h-full object-cover hover:opacity-75 transition-opacity" />
                         )}
                       </a>
                     </div>
