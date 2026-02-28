@@ -3,7 +3,7 @@ import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { Expense } from '@/types/Expense';
 
-export const useExpenses = (userId: string | undefined, startDate: Date, endDate: Date) => {
+export const useExpenses = (userId: string | undefined, startDate: Date, endDate: Date, includeTransfers = false) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export const useExpenses = (userId: string | undefined, startDate: Date, endDate
       });
 
       const merged = Array.from(mergedMap.values())
-        .filter(e => !e.isTransfer)
+        .filter(e => includeTransfers || !e.isTransfer)
         .sort(
         (a, b) => b.date.toDate().getTime() - a.date.toDate().getTime()
       );
@@ -83,7 +83,7 @@ export const useExpenses = (userId: string | undefined, startDate: Date, endDate
       unsubscribeRegular();
       unsubscribeIrregular();
     };
-  }, [userId, startDate, endDate]);
+  }, [userId, startDate, endDate, includeTransfers]);
 
   return { expenses, loading, error };
 };

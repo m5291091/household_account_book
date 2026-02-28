@@ -21,9 +21,14 @@ const DashboardSummary = ({ month }: { month: Date }) => {
   const monthStart = useMemo(() => startOfMonth(month), [month]);
   const monthEnd = useMemo(() => endOfMonth(month), [month]);
   const { expenses, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, monthStart, monthEnd);
+  const { expenses: allExpensesWithTransfers } = useExpenses(user?.uid, monthStart, monthEnd, true);
   const totalExpenses = useMemo(
     () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
     [expenses]
+  );
+  const totalTransferExcluded = useMemo(
+    () => allExpensesWithTransfers.filter(e => e.isTransfer).reduce((sum, e) => sum + e.amount, 0),
+    [allExpensesWithTransfers]
   );
 
   useEffect(() => {
@@ -105,7 +110,14 @@ const DashboardSummary = ({ month }: { month: Date }) => {
         </div>
         <div className="flex justify-between items-center">
           <p className="text-gray-600 dark:text-gray-300">合計支出</p>
-          <p className="text-2xl font-semibold text-red-600">¥{totalExpenses.toLocaleString()}</p>
+          <div className="text-right">
+            <p className="text-2xl font-semibold text-red-600">¥{totalExpenses.toLocaleString()}</p>
+            {totalTransferExcluded > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                振替除外: ¥{totalTransferExcluded.toLocaleString()}（集計に含まれません）
+              </p>
+            )}
+          </div>
         </div>
         <hr/>
         <div className="flex justify-between items-center">

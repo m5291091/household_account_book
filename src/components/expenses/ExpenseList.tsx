@@ -45,6 +45,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [showTransfers, setShowTransfers] = useState(false);
 
   // Calculate effective query dates
   const { queryStart, queryEnd } = useMemo(() => {
@@ -62,7 +63,7 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
   }, [month, viewMode, startDate, endDate]);
 
   // Custom Hooks
-  const { expenses: allMonthExpenses, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, queryStart, queryEnd);
+  const { expenses: allMonthExpenses, loading: expensesLoading, error: expensesError } = useExpenses(user?.uid, queryStart, queryEnd, showTransfers);
   const { categories, paymentMethods, loading: masterLoading } = useMasterData(user?.uid);
 
   const loading = expensesLoading || masterLoading || authLoading;
@@ -447,6 +448,24 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
               <span>-</span>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md w-full"/>
             </div>
+            <div className="flex items-center md:col-span-4">
+              <button
+                type="button"
+                onClick={() => setShowTransfers(v => !v)}
+                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                  showTransfers
+                    ? 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-600 dark:text-amber-300'
+                    : 'bg-white border-gray-300 text-gray-500 dark:bg-black dark:border-gray-600 dark:text-gray-400 hover:border-amber-400'
+                }`}
+              >
+                <span>{showTransfers ? '👁 振替を表示中' : '振替を表示する'}</span>
+              </button>
+              {showTransfers && (
+                <span className="ml-3 text-xs text-amber-700 dark:text-amber-400">
+                  ※ 振替（集計除外）の行はオレンジ色で表示されます
+                </span>
+              )}
+            </div>
           </div>
 
           {selectedIds.length > 0 && (
@@ -486,7 +505,11 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
               </thead>
               <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredExpenses.map(expense => (
-                  <tr key={expense.id} className={selectedIds.includes(expense.id) ? 'bg-yellow-100' : ''}>
+                  <tr key={expense.id} className={
+                    expense.isTransfer
+                      ? 'bg-amber-50 dark:bg-amber-900/20'
+                      : selectedIds.includes(expense.id) ? 'bg-yellow-100' : ''
+                  }>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <input type="checkbox"
                         checked={selectedIds.includes(expense.id)}
@@ -496,14 +519,17 @@ const ExpenseList = ({ month, onEditExpense, onCopyExpense, viewMode, headerActi
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{format(expense.date.toDate(), 'M/d')}</td>
                     <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
                         {expense.store || 'N/A'}
+                        {expense.isTransfer && (
+                          <span className="inline-block text-xs px-1.5 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded font-semibold">振替</span>
+                        )}
                         {expense.receiptUrl && <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 hover:text-blue-700" title="レシート画像">📎</a>}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">{categories.find(c=>c.id === expense.categoryId)?.name || '未分類'}</div>
                       {expense.memo && <div className="text-xs text-gray-400 mt-1">メモ: {expense.memo}</div>}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">¥{expense.amount.toLocaleString()}</td>
+                    <td className={`px-4 py-4 whitespace-nowrap text-right text-sm font-medium ${expense.isTransfer ? 'text-amber-600 line-through' : ''}`}>¥{expense.amount.toLocaleString()}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{paymentMethods.find(p=>p.id === expense.paymentMethodId)?.name || '不明'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                        <button onClick={() => handleCopy(expense)} className="text-green-600 hover:text-green-800 mr-2">複製</button>
