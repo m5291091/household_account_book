@@ -60,6 +60,8 @@ export default function ReceiptsPage() {
   const [linkModalDateFrom, setLinkModalDateFrom] = useState('');
   const [linkModalDateTo, setLinkModalDateTo] = useState('');
   const [deletingStandaloneId, setDeletingStandaloneId] = useState<string | null>(null);
+  const [renamingStandaloneId, setRenamingStandaloneId] = useState<string | null>(null);
+  const [renameStandaloneValue, setRenameStandaloneValue] = useState('');
 
   // Multi-select state
   const [selectedStandaloneIds, setSelectedStandaloneIds] = useState<Set<string>>(new Set());
@@ -413,6 +415,9 @@ export default function ReceiptsPage() {
     const receipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
     const expense = linkModalExpenses.find(e => e.id === expenseId);
     if (!receipt || !expense) return;
+    if (expense.receiptUrl && expense.receiptUrl.trim() !== '') {
+      if (!confirm(`「${expense.store || '(店名なし)'}」には既にレシートが添付されています。上書きしますか？`)) return;
+    }
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
       linkedExpenseId: expenseId,
@@ -429,9 +434,17 @@ export default function ReceiptsPage() {
   const handleUnlinkReceipt = async (receipt: StandaloneReceipt) => {
     if (!user || !receipt.linkedExpenseId) return;
     const batch = writeBatch(db);
-    batch.update(doc(db, 'users', user.uid, 'receipts', receipt.id), { linkedExpenseId: null });
+    batch.update(doc(db, 'users', user.uid, 'receipts', receipt.id), { linkedExpenseId: null, displayDate: null });
     batch.update(doc(db, 'users', user.uid, 'expenses', receipt.linkedExpenseId), { receiptUrl: '' });
     await batch.commit();
+  };
+
+  const handleRenameStandalone = async (receiptId: string) => {
+    if (!user || !renameStandaloneValue.trim()) return;
+    await updateDoc(doc(db, 'users', user.uid, 'receipts', receiptId), {
+      fileName: renameStandaloneValue.trim(),
+    });
+    setRenamingStandaloneId(null);
   };
 
   const handleDeleteStandaloneReceipt = async (receipt: StandaloneReceipt) => {
@@ -765,7 +778,26 @@ export default function ReceiptsPage() {
                   </a>
                 </div>
                 <div className="p-3 flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
+                  {renamingStandaloneId === receipt.id ? (
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={renameStandaloneValue}
+                        onChange={(e) => setRenameStandaloneValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameStandalone(receipt.id); if (e.key === 'Escape') setRenamingStandaloneId(null); }}
+                        autoFocus
+                        placeholder="ファイル名を入力"
+                        className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                      />
+                      <button onClick={() => handleRenameStandalone(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
+                      <button onClick={() => setRenamingStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
+                      <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
+                    </div>
+                  )}
                   <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
                   <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
                     <button
@@ -817,7 +849,26 @@ export default function ReceiptsPage() {
                   </a>
                 </div>
                 <div className="p-3 flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
+                  {renamingStandaloneId === receipt.id ? (
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={renameStandaloneValue}
+                        onChange={(e) => setRenameStandaloneValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameStandalone(receipt.id); if (e.key === 'Escape') setRenamingStandaloneId(null); }}
+                        autoFocus
+                        placeholder="ファイル名を入力"
+                        className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                      />
+                      <button onClick={() => handleRenameStandalone(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
+                      <button onClick={() => setRenamingStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
+                      <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
+                    </div>
+                  )}
                   <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
                   <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
                     <button
@@ -1280,9 +1331,14 @@ export default function ReceiptsPage() {
                     <button
                       key={e.id}
                       onClick={() => handleLinkReceipt(e.id)}
-                      className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 ${e.receiptUrl ? 'border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700'}`}
                     >
-                      <div className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{e.store || '(店名なし)'}</span>
+                        {e.receiptUrl && (
+                          <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">📎 添付済</span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy年MM月dd日')} · ¥{e.amount.toLocaleString()}{e.memo ? ` · ${e.memo}` : ''}</div>
                     </button>
                   ))
