@@ -3,10 +3,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, Timestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useExpenses } from '@/hooks/useExpenses';
+import { SavingsGoal } from '@/types/SavingsGoal';
 
 import Skeleton from '@/components/ui/Skeleton';
 
@@ -15,6 +16,7 @@ const DashboardSummary = ({ month }: { month: Date }) => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [incomeLoading, setIncomeLoading] = useState(true);
   const [incomeError, setIncomeError] = useState<string | null>(null);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
 
   const monthStart = useMemo(() => startOfMonth(month), [month]);
   const monthEnd = useMemo(() => endOfMonth(month), [month]);
@@ -49,7 +51,12 @@ const DashboardSummary = ({ month }: { month: Date }) => {
       setIncomeLoading(false);
     });
 
-    return () => unsubIncomes();
+    const unsubGoals = onSnapshot(
+      query(collection(db, 'users', user.uid, 'savingsGoals'), orderBy('updatedAt', 'desc')),
+      s => setSavingsGoals(s.docs.map(d => ({ id: d.id, ...d.data() } as SavingsGoal)))
+    );
+
+    return () => { unsubIncomes(); unsubGoals(); };
   }, [user, authLoading, monthStart, monthEnd]);
 
   const loading = authLoading || expensesLoading || incomeLoading;
@@ -57,6 +64,13 @@ const DashboardSummary = ({ month }: { month: Date }) => {
   if (error) return <p className="text-red-500">{error}</p>;
 
   const netBalance = totalIncome - totalExpenses;
+
+  const totalSavings = savingsGoals.reduce((sum, goal) => {
+    if (goal.type === 'fixed') return sum + goal.amount;
+    return sum + Math.round(totalIncome * (goal.percentage / 100));
+  }, 0);
+
+  const netAfterSavings = netBalance - totalSavings;
 
   if (loading) {
     return (
@@ -100,6 +114,21 @@ const DashboardSummary = ({ month }: { month: Date }) => {
             ¥{netBalance.toLocaleString()}
           </p>
         </div>
+        {totalSavings > 0 && (
+          <>
+            <div className="flex justify-between items-center">
+              <p className="text-gray-600 dark:text-gray-300">貯金目標額</p>
+              <p className="text-2xl font-semibold text-blue-600">− ¥{totalSavings.toLocaleString()}</p>
+            </div>
+            <hr/>
+            <div className="flex justify-between items-center">
+              <p className="text-gray-600 dark:text-gray-300 font-bold">貯金後の収支</p>
+              <p className={`text-3xl font-bold ${netAfterSavings >= 0 ? 'text-gray-800 dark:text-gray-100' : 'text-red-600'}`}>
+                ¥{netAfterSavings.toLocaleString()}
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
