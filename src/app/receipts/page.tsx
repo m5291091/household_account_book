@@ -65,6 +65,11 @@ export default function ReceiptsPage() {
   const [renamingStandaloneId, setRenamingStandaloneId] = useState<string | null>(null);
   const [renameStandaloneValue, setRenameStandaloneValue] = useState('');
 
+  // Drag-and-drop state
+  const [draggedReceiptId, setDraggedReceiptId] = useState<string | null>(null);
+  const [draggedReceiptType, setDraggedReceiptType] = useState<'standalone' | 'existing' | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | 'parent' | null>(null);
+
   // Multi-select state
   const [selectedStandaloneIds, setSelectedStandaloneIds] = useState<Set<string>>(new Set());
   const [selectedExistingIds, setSelectedExistingIds] = useState<Set<string>>(new Set());
@@ -293,6 +298,26 @@ export default function ReceiptsPage() {
       receiptName: renameValue.trim() || null,
     });
     setRenamingReceiptId(null);
+  };
+
+  const handleDropOnFolder = async (targetFolderId: string | null) => {
+    if (!user || !draggedReceiptId) return;
+    if (draggedReceiptType === 'standalone') {
+      await updateDoc(doc(db, 'users', user.uid, 'receipts', draggedReceiptId), {
+        receiptFolderId: targetFolderId,
+      });
+    } else if (draggedReceiptType === 'existing') {
+      const maxOrder = Math.max(-1, ...allReceipts
+        .filter(e => (e.receiptFolderId ?? null) === targetFolderId)
+        .map(e => e.receiptOrder ?? 0));
+      await updateDoc(doc(db, 'users', user.uid, 'expenses', draggedReceiptId), {
+        receiptFolderId: targetFolderId,
+        receiptOrder: maxOrder + 1,
+      });
+    }
+    setDraggedReceiptId(null);
+    setDraggedReceiptType(null);
+    setDragOverFolderId(null);
   };
 
   const handleMoveReceipt = async (expenseId: string, targetFolderId: string | null) => {
@@ -784,7 +809,10 @@ export default function ReceiptsPage() {
             {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
-                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                draggable
+                onDragStart={() => { setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
+                onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
               >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   {/* Checkbox overlay */}
@@ -855,7 +883,10 @@ export default function ReceiptsPage() {
             {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
               <div
                 key={receipt.id}
-                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                draggable
+                onDragStart={() => { setDraggedReceiptId(receipt.id); setDraggedReceiptType('standalone'); }}
+                onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === receipt.id ? 'opacity-40 scale-95' : ''} ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
               >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   {/* Checkbox overlay */}
@@ -1146,14 +1177,22 @@ export default function ReceiptsPage() {
         </div>
       )}
 
-      {/* Back button */}
+      {/* Back button — also a drop target to move receipt to parent folder */}
       {currentFolderId && (
-        <button
-          onClick={() => setCurrentFolderId(folderPath[folderPath.length - 2]?.id ?? null)}
-          className="mb-4 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        <div
+          onDragOver={(e) => { if (draggedReceiptId) { e.preventDefault(); setDragOverFolderId('parent'); } }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
+          onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folderPath[folderPath.length - 2]?.id ?? null); }}
+          className={`mb-4 inline-flex rounded-lg transition-all ${dragOverFolderId === 'parent' ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-400 px-2' : ''}`}
         >
-          ← 上のフォルダへ
-        </button>
+          <button
+            onClick={() => setCurrentFolderId(folderPath[folderPath.length - 2]?.id ?? null)}
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 py-1"
+          >
+            ← 上のフォルダへ
+            {dragOverFolderId === 'parent' && <span className="text-xs text-indigo-600 dark:text-indigo-400 ml-1">ここにドロップ</span>}
+          </button>
+        </div>
       )}
 
       {currentFolders.length === 0 && currentReceipts.length === 0 ? (
@@ -1171,7 +1210,13 @@ export default function ReceiptsPage() {
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">フォルダ</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {currentFolders.map((folder, idx) => (
-                  <div key={folder.id} className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 flex flex-col gap-2">
+                  <div
+                    key={folder.id}
+                    onDragOver={(e) => { if (draggedReceiptId) { e.preventDefault(); setDragOverFolderId(folder.id); } }}
+                    onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null); }}
+                    onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folder.id); }}
+                    className={`border rounded-lg p-3 flex flex-col gap-2 transition-all ${dragOverFolderId === folder.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 scale-105 shadow-md' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700'}`}
+                  >
                     {renamingFolderId === folder.id ? (
                       <input
                         type="text"
@@ -1223,7 +1268,13 @@ export default function ReceiptsPage() {
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {currentReceipts.map((expense, idx) => (
-                  <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
+                  <div
+                    key={expense.id}
+                    draggable
+                    onDragStart={() => { setDraggedReceiptId(expense.id); setDraggedReceiptType('existing'); }}
+                    onDragEnd={() => { setDraggedReceiptId(null); setDraggedReceiptType(null); setDragOverFolderId(null); }}
+                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${draggedReceiptId === expense.id ? 'opacity-40 scale-95' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'} cursor-grab active:cursor-grabbing`}
+                  >
 
                     {/* Thumbnail */}
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
