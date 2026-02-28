@@ -20,6 +20,9 @@ type SortMode = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' | 'name_
 export default function ReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
   const [allReceipts, setAllReceipts] = useState<Expense[]>([]);
+  // All expenses (unfiltered) used for popover lookup – includes expenses
+  // that may not have receiptUrl yet but are referenced by linkedExpenseIds
+  const [allExpensesMap, setAllExpensesMap] = useState<Map<string, Expense>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>('date_desc');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -85,10 +88,9 @@ export default function ReceiptsPage() {
     const unsubReceipts = onSnapshot(
       query(collection(db, 'users', user.uid, 'expenses')),
       (snapshot) => {
-        const expensesWithReceipts = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() } as Expense))
-          .filter(e => e.receiptUrl && e.receiptUrl.trim() !== '');
-        setAllReceipts(expensesWithReceipts);
+        const allExp = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
+        setAllReceipts(allExp.filter(e => e.receiptUrl && e.receiptUrl.trim() !== ''));
+        setAllExpensesMap(new Map(allExp.map(e => [e.id, e])));
         setLoading(false);
       }
     );
@@ -134,13 +136,6 @@ export default function ReceiptsPage() {
     }
   }, [allReceipts, sortMode, currentMonth]);
 
-  /** Map of expenseId → Expense for quick lookup in linked receipt cards. */
-  const expenseById = useMemo(() => {
-    const map = new Map<string, Expense>();
-    allReceipts.forEach(e => map.set(e.id, e));
-    return map;
-  }, [allReceipts]);
-
   /** Maps expenseId → the StandaloneReceipt that is linked to it (if any). */
   const standaloneForExpense = useMemo(() => {
     const map = new Map<string, StandaloneReceipt>();
@@ -182,7 +177,7 @@ export default function ReceiptsPage() {
             </div>
             <div className="max-h-64 overflow-y-auto rounded-b-xl">
               {linkedIds.map(eid => {
-                const e = expenseById.get(eid);
+                const e = allExpensesMap.get(eid);
                 if (!e) return null;
                 const isCurrent = eid === expenseId;
                 const categoryName = categories.find(c => c.id === e.categoryId)?.name ?? e.categoryId;
