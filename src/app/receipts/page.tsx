@@ -10,7 +10,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'fi
 import { useAuth } from '@/contexts/AuthContext';
 import { Expense } from '@/types/Expense';
 import { StandaloneReceipt } from '@/types/Receipt';
-import { format } from 'date-fns';
+import { format, addMonths, subMonths, isSameMonth } from 'date-fns';
 import Link from 'next/link';
 
 interface ReceiptFolder {
@@ -29,6 +29,7 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('custom');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // UI states
   const [renamingReceiptId, setRenamingReceiptId] = useState<string | null>(null);
@@ -115,9 +116,12 @@ export default function ReceiptsPage() {
     [folders, currentFolderId]
   );
 
-  // Receipts directly inside the current folder, sorted
+  // Receipts directly inside the current folder, filtered by month, sorted
   const currentReceipts = useMemo(() => {
-    const filtered = allReceipts.filter(e => (e.receiptFolderId ?? null) === currentFolderId);
+    const filtered = allReceipts.filter(e =>
+      (e.receiptFolderId ?? null) === currentFolderId &&
+      isSameMonth(e.date.toDate(), currentMonth)
+    );
     switch (sortMode) {
       case 'date_desc':  return [...filtered].sort((a, b) => b.date.toMillis() - a.date.toMillis());
       case 'date_asc':   return [...filtered].sort((a, b) => a.date.toMillis() - b.date.toMillis());
@@ -127,7 +131,7 @@ export default function ReceiptsPage() {
         (a.receiptName || a.store || '').localeCompare(b.receiptName || b.store || '', 'ja'));
       default:           return [...filtered].sort((a, b) => (a.receiptOrder ?? 0) - (b.receiptOrder ?? 0));
     }
-  }, [allReceipts, currentFolderId, sortMode]);
+  }, [allReceipts, currentFolderId, sortMode, currentMonth]);
 
   // Flat list of all folders for move dropdown (recursive)
   const buildFolderOptions = (parentId: string | null, depth: number): { id: string | null; label: string }[] => {
@@ -395,7 +399,7 @@ export default function ReceiptsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">レシート・領収書一覧</h1>
         <Link
           href="/transactions/expense"
@@ -403,6 +407,25 @@ export default function ReceiptsPage() {
         >
           支出を記録する
         </Link>
+      </div>
+
+      {/* Month navigation */}
+      <div className="flex items-center justify-center gap-4 mb-6">
+        <button
+          onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}
+          className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 font-bold py-2 px-4 rounded"
+        >
+          ◀
+        </button>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white w-40 text-center">
+          {format(currentMonth, 'yyyy年 M月')}
+        </h2>
+        <button
+          onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
+          className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 font-bold py-2 px-4 rounded"
+        >
+          ▶
+        </button>
       </div>
 
       {/* Upload zone */}
@@ -431,11 +454,11 @@ export default function ReceiptsPage() {
       </div>
 
       {/* Unlinked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId === null).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">未紐付きレシート</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId === null).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).map(receipt => (
               <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
@@ -473,11 +496,11 @@ export default function ReceiptsPage() {
       )}
 
       {/* Linked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId !== null).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId !== null).map(receipt => (
+            {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).map(receipt => (
               <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                   <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
@@ -734,7 +757,7 @@ export default function ReceiptsPage() {
       {currentFolders.length === 0 && currentReceipts.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">
           <p className="text-gray-500 dark:text-gray-400 text-lg">
-            {currentFolderId ? 'このフォルダは空です。' : '添付されたレシートはありません。'}
+            {currentFolderId ? 'このフォルダは空です。' : `${format(currentMonth, 'yyyy年M月')}のレシートはありません。`}
           </p>
         </div>
       ) : (
