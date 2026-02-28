@@ -1,7 +1,6 @@
-// /Users/alphabetagamma/work/APP/household_account_book/src/components/dashboard/DashboardCharts.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,9 +24,15 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-const DashboardCharts = ({ month }: { month: Date }) => {
+interface DashboardChartsProps {
+  month: Date;
+  showTransfers?: boolean;
+  paymentMethodFilter?: string;
+}
+
+const DashboardCharts = ({ month, showTransfers = false, paymentMethodFilter = '' }: DashboardChartsProps) => {
   const { user } = useAuth();
-  const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+  const [rawExpenses, setRawExpenses] = useState<any[]>([]);
   const [categoryNames, setCategoryNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
@@ -57,23 +62,24 @@ const DashboardCharts = ({ month }: { month: Date }) => {
     );
 
     const unsubExpenses = onSnapshot(expensesQuery, snapshot => {
-      const byCategory: Record<string, number> = {};
-      snapshot.forEach(doc => {
-        const expense = doc.data();
-        byCategory[expense.categoryId] = (byCategory[expense.categoryId] || 0) + expense.amount;
-      });
-      
-      const chartData = Array.from(categoryNames.entries()).map(([id, name]) => ({
-        name: name,
-        value: byCategory[id] || 0,
-      })).filter(item => item.value > 0); // Only show categories with expenses
-
-      setCategoryData(chartData);
+      setRawExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
     return () => unsubExpenses();
   }, [user, month, categoryNames]);
+
+  const categoryData = useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    rawExpenses.forEach(expense => {
+      if (!showTransfers && expense.isTransfer) return;
+      if (paymentMethodFilter && expense.paymentMethodId !== paymentMethodFilter) return;
+      byCategory[expense.categoryId] = (byCategory[expense.categoryId] || 0) + expense.amount;
+    });
+    return Array.from(categoryNames.entries())
+      .map(([id, name]) => ({ name, value: byCategory[id] || 0 }))
+      .filter(item => item.value > 0);
+  }, [rawExpenses, categoryNames, showTransfers, paymentMethodFilter]);
 
   if (loading) {
     return (

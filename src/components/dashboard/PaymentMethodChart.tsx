@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const PaymentMethodChart = ({ month }: { month: Date }) => {
+interface PaymentMethodChartProps {
+  month: Date;
+  showTransfers?: boolean;
+  paymentMethodFilter?: string;
+}
+
+const PaymentMethodChart = ({ month, showTransfers = false, paymentMethodFilter = '' }: PaymentMethodChartProps) => {
   const { user, loading: authLoading } = useAuth();
-  const [chartData, setChartData] = useState<{ name: string; total: number }[]>([]);
+  const [rawExpenses, setRawExpenses] = useState<any[]>([]);
   const [paymentMethodNames, setPaymentMethodNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +31,7 @@ const PaymentMethodChart = ({ month }: { month: Date }) => {
     });
 
     return () => unsubPm();
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user || paymentMethodNames.size === 0) return;
@@ -39,22 +45,24 @@ const PaymentMethodChart = ({ month }: { month: Date }) => {
     );
 
     const unsubExpenses = onSnapshot(expensesQuery, expensesSnapshot => {
-      const byMethod: Record<string, number> = {};
-      expensesSnapshot.forEach(doc => {
-        const expense = doc.data();
-        byMethod[expense.paymentMethodId] = (byMethod[expense.paymentMethodId] || 0) + expense.amount;
-      });
-      
-      const data = Array.from(paymentMethodNames.entries()).map(([id, name]) => ({
-        name: name,
-        total: byMethod[id] || 0,
-      }));
-      setChartData(data);
+      setRawExpenses(expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
     return () => unsubExpenses();
   }, [user, month, paymentMethodNames]);
+
+  const chartData = useMemo(() => {
+    const byMethod: Record<string, number> = {};
+    rawExpenses.forEach(expense => {
+      if (!showTransfers && expense.isTransfer) return;
+      if (paymentMethodFilter && expense.paymentMethodId !== paymentMethodFilter) return;
+      byMethod[expense.paymentMethodId] = (byMethod[expense.paymentMethodId] || 0) + expense.amount;
+    });
+    return Array.from(paymentMethodNames.entries())
+      .map(([id, name]) => ({ name, total: byMethod[id] || 0 }))
+      .filter(item => !paymentMethodFilter || item.name === paymentMethodNames.get(paymentMethodFilter));
+  }, [rawExpenses, paymentMethodNames, showTransfers, paymentMethodFilter]);
 
   if (loading) {
      return (

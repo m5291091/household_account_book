@@ -13,11 +13,14 @@ import IncomeCategoryChart from '@/components/dashboard/IncomeCategoryChart';
 import StoreChart from '@/components/dashboard/StoreChart';
 import CreditCardStatus from '@/components/dashboard/CreditCardStatus';
 import SavingsGoalStatus from '@/components/dashboard/SavingsGoalStatus';
+import DashboardFilterBar from '@/components/dashboard/DashboardFilterBar';
 
 const DashboardPage = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showTransfers, setShowTransfers] = useState(false);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,16 +54,24 @@ const DashboardPage = () => {
             </button>
           </div>
 
-          <div className="space-y-8">
+          {/* グラフ絞り込みフィルター */}
+          <DashboardFilterBar
+            showTransfers={showTransfers}
+            onShowTransfersChange={setShowTransfers}
+            paymentMethodFilter={paymentMethodFilter}
+            onPaymentMethodFilterChange={setPaymentMethodFilter}
+          />
+
+          <div className="space-y-8 mt-8">
             <DashboardSummary month={currentMonth} />
             <SavingsGoalStatus month={currentMonth} />
             <CreditCardStatus month={currentMonth} />
-            <IncomeExpenseChart month={currentMonth} />
+            <IncomeExpenseChart month={currentMonth} showTransfers={showTransfers} />
             <IncomeCategoryChart month={currentMonth} />
             <BudgetStatus month={currentMonth} />
-            <PaymentMethodChart month={currentMonth} />
-            <DashboardCharts month={currentMonth} />
-            <StoreChart month={currentMonth} />
+            <PaymentMethodChart month={currentMonth} showTransfers={showTransfers} paymentMethodFilter={paymentMethodFilter} />
+            <DashboardCharts month={currentMonth} showTransfers={showTransfers} paymentMethodFilter={paymentMethodFilter} />
+            <StoreChart month={currentMonth} showTransfers={showTransfers} paymentMethodFilter={paymentMethodFilter} />
           </div>
         </div>
       </main>

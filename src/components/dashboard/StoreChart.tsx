@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cart
 
 interface StoreChartProps {
   month: Date;
+  showTransfers?: boolean;
+  paymentMethodFilter?: string;
 }
 
 interface StoreData {
@@ -15,7 +17,7 @@ interface StoreData {
   total: number;
 }
 
-const StoreChart = ({ month }: StoreChartProps) => {
+const StoreChart = ({ month, showTransfers = false, paymentMethodFilter = '' }: StoreChartProps) => {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,8 @@ const StoreChart = ({ month }: StoreChartProps) => {
 
     const storeMap = new Map<string, number>();
     expenses.forEach(expense => {
+      if (!showTransfers && expense.isTransfer) return;
+      if (paymentMethodFilter && expense.paymentMethodId !== paymentMethodFilter) return;
       const storeName = expense.store?.trim() || '店名なし';
       const currentTotal = storeMap.get(storeName) || 0;
       storeMap.set(storeName, currentTotal + expense.amount);
@@ -62,7 +66,7 @@ const StoreChart = ({ month }: StoreChartProps) => {
       .sort((a, b) => b.total - a.total);
       
     return { storeData: data };
-  }, [expenses]);
+  }, [expenses, showTransfers, paymentMethodFilter]);
 
   if (loading) return <p>グラフを読み込んでいます...</p>;
   if (error) return <p className="text-red-500">{error}</p>;

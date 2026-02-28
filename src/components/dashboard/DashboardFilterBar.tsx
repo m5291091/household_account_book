@@ -1,0 +1,84 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase/config';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface DashboardFilterBarProps {
+  showTransfers: boolean;
+  onShowTransfersChange: (v: boolean) => void;
+  paymentMethodFilter: string;
+  onPaymentMethodFilterChange: (v: string) => void;
+}
+
+const DashboardFilterBar = ({
+  showTransfers,
+  onShowTransfersChange,
+  paymentMethodFilter,
+  onPaymentMethodFilterChange,
+}: DashboardFilterBarProps) => {
+  const { user } = useAuth();
+  const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(
+      query(collection(db, 'users', user.uid, 'paymentMethods')),
+      snap => setPaymentMethods(snap.docs.map(d => ({ id: d.id, name: d.data().name as string })))
+    );
+    return () => unsub();
+  }, [user]);
+
+  const hasFilter = showTransfers || !!paymentMethodFilter;
+
+  return (
+    <div className="bg-white dark:bg-black p-4 rounded-lg shadow-md flex flex-wrap items-center gap-3">
+      <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">🔍 グラフの絞り込み：</span>
+
+      {/* 振替トグル */}
+      <button
+        type="button"
+        onClick={() => onShowTransfersChange(!showTransfers)}
+        className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+          showTransfers
+            ? 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-600 dark:text-amber-300'
+            : 'bg-gray-50 border-gray-300 text-gray-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 hover:border-amber-400'
+        }`}
+      >
+        {showTransfers ? '✓ 振替を含む' : '振替を除外中'}
+      </button>
+
+      {/* 支払い方法フィルター */}
+      <select
+        value={paymentMethodFilter}
+        onChange={e => onPaymentMethodFilterChange(e.target.value)}
+        className="text-sm px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-black text-gray-700 dark:text-gray-300"
+      >
+        <option value="">すべての支払い方法</option>
+        {paymentMethods.map(pm => (
+          <option key={pm.id} value={pm.id}>{pm.name}</option>
+        ))}
+      </select>
+
+      {/* リセット */}
+      {hasFilter && (
+        <button
+          type="button"
+          onClick={() => { onShowTransfersChange(false); onPaymentMethodFilterChange(''); }}
+          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+        >
+          リセット
+        </button>
+      )}
+
+      {paymentMethodFilter && (
+        <span className="text-xs text-indigo-600 dark:text-indigo-400">
+          ※ 選択中の支払い方法のみ集計
+        </span>
+      )}
+    </div>
+  );
+};
+
+export default DashboardFilterBar;

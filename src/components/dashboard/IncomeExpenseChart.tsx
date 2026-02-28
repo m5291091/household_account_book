@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const IncomeExpenseChart = ({ month }: { month: Date }) => {
+const IncomeExpenseChart = ({ month, showTransfers = false }: { month: Date; showTransfers?: boolean }) => {
   const { user } = useAuth();
   const [chartData, setChartData] = useState<{ name: string; 収入: number; 支出: number; 収支: number; }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,9 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
       where('date', '<=', Timestamp.fromDate(monthEnd))
     );
     const unsubExpenses = onSnapshot(expensesQuery, (snapshot) => {
-      totalExpenses = snapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+      totalExpenses = snapshot.docs
+        .filter(doc => showTransfers || !doc.data().isTransfer)
+        .reduce((sum, doc) => sum + doc.data().amount, 0);
       updateChartData();
     });
 
@@ -54,7 +56,7 @@ const IncomeExpenseChart = ({ month }: { month: Date }) => {
       unsubExpenses();
       unsubIncomes();
     };
-  }, [user, month]);
+  }, [user, month, showTransfers]);
 
   if (loading) {
     return (
