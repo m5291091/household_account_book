@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { app } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
+
+const isMobileBrowser = () =>
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +15,20 @@ const Login = () => {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const auth = getAuth(app);
   const router = useRouter();
+
+  // Handle redirect result after signInWithRedirect (Android/mobile)
+  useEffect(() => {
+    setLoadingGoogle(true);
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) router.push('/dashboard');
+      })
+      .catch((err: any) => {
+        if (err.code !== 'auth/popup-closed-by-user') setError(err.message);
+      })
+      .finally(() => setLoadingGoogle(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,13 +46,17 @@ const Login = () => {
     setLoadingGoogle(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.push('/dashboard');
-    } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        setError(error.message);
+      if (isMobileBrowser()) {
+        // Mobile: use redirect flow (popup not reliable on Android)
+        await signInWithRedirect(auth, provider);
+        // Navigation happens in useEffect after redirect returns
+      } else {
+        await signInWithPopup(auth, provider);
+        router.push('/dashboard');
+        setLoadingGoogle(false);
       }
-    } finally {
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') setError(error.message);
       setLoadingGoogle(false);
     }
   };

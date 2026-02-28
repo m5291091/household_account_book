@@ -351,9 +351,14 @@ const RegularPaymentSettings = () => {
                       <div className="flex-grow flex justify-between items-center">
                         <div>
                           <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                              次回支払日: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {t.interval}{t.frequency === 'months' ? 'ヶ月' : '年'}ごと
+                            </span>
+                          </div>
                         </div>
                         <div className="flex space-x-3 text-sm">
                           <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>
@@ -386,9 +391,14 @@ const RegularPaymentSettings = () => {
                     <div className="flex-grow flex justify-between items-center">
                       <div>
                         <p className="font-bold">{t.name} - ¥{t.amount.toLocaleString()}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          次回: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            次回支払日: {t.nextPaymentDate ? format(t.nextPaymentDate.toDate(), 'yyyy/MM/dd') : '未設定'}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {t.interval}{t.frequency === 'months' ? 'ヶ月' : '年'}ごと
+                          </span>
+                        </div>
                       </div>
                       <div className="flex space-x-3 text-sm">
                         <Link href={`/settings/edit-template/${t.id}`} className="text-blue-500 hover:text-blue-700 font-medium">編集</Link>

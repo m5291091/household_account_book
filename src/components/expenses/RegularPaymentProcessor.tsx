@@ -42,7 +42,10 @@ function getPaymentDateForMonth(template: RegularPayment, targetMonth: Date): Da
   while (candidate > end && iter < 1200) { candidate = advance(candidate, -1); iter++; }
   // Move forwards while candidate is before the target month
   while (candidate < start && iter < 2400) { candidate = advance(candidate, 1); iter++; }
-  return (candidate >= start && candidate <= end) ? candidate : null;
+  if (candidate < start || candidate > end) return null;
+  // Don't show months beyond the next scheduled payment date
+  if (candidate > template.nextPaymentDate.toDate()) return null;
+  return candidate;
 }
 
 const RegularPaymentProcessor = ({ month }: Props) => {
@@ -429,11 +432,20 @@ const PaymentItem = ({
 }) => {
   const isRecorded = !!recordedInfo;
   const paymentDate = getPaymentDateForMonth(template, month) ?? template.nextPaymentDate.toDate();
+  // Is this the "current next" actionable date, or a historical past month?
+  const isActionable = isRecorded || isSameDay(paymentDate, template.nextPaymentDate.toDate());
+  const nextDateLabel = template.nextPaymentDate
+    ? template.nextPaymentDate.toDate().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
+    : '';
 
   return (
-    <li className={`flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isRecorded ? 'bg-green-50 dark:bg-green-900/10' : 'bg-white dark:bg-black'} ${template.isChecked ? 'text-red-500' : ''}`}>
+    <li className={`flex items-center justify-between p-3 transition-colors
+      ${isRecorded ? 'bg-green-50 dark:bg-green-900/10' : isActionable ? 'bg-white dark:bg-black hover:bg-gray-50 dark:hover:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50 opacity-70'}
+      ${template.isChecked ? 'text-red-500' : ''}`}>
       <div className="flex items-center gap-3 min-w-0">
-        {!isRecorded ? (
+        {isRecorded ? (
+          <span className="w-4 h-4 flex items-center justify-center text-green-500 shrink-0 text-base">✓</span>
+        ) : isActionable ? (
           <input
             type="checkbox"
             checked={selected}
@@ -442,7 +454,7 @@ const PaymentItem = ({
             className="w-4 h-4 rounded shrink-0"
           />
         ) : (
-          <span className="w-4 h-4 flex items-center justify-center text-green-500 shrink-0 text-base">✓</span>
+          <span className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0 text-base">—</span>
         )}
         <div className="min-w-0">
           <p className="font-semibold truncate">{template.name}</p>
@@ -452,17 +464,12 @@ const PaymentItem = ({
           {isRecorded && (
             <p className="text-xs text-green-600 dark:text-green-400 font-medium">記録済み</p>
           )}
+          {!isRecorded && !isActionable && (
+            <p className="text-xs text-orange-500 font-medium">次回支払日: {nextDateLabel}</p>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2 ml-2 shrink-0">
-        {!isRecorded && (
-          <button
-            onClick={() => onToggleCheck(template)}
-            className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
-          >
-            {template.isChecked ? '✔' : 'チェック'}
-          </button>
-        )}
         {isRecorded ? (
           <button
             onClick={() => onUndo(template.id)}
@@ -471,14 +478,24 @@ const PaymentItem = ({
           >
             取り消す
           </button>
+        ) : isActionable ? (
+          <>
+            <button
+              onClick={() => onToggleCheck(template)}
+              className={`text-sm font-medium px-2 py-1 rounded ${template.isChecked ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
+            >
+              {template.isChecked ? '✔' : 'チェック'}
+            </button>
+            <button
+              onClick={() => onRecord(template)}
+              disabled={recording}
+              className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-bold py-1 px-3 rounded text-sm transition-colors"
+            >
+              記録する
+            </button>
+          </>
         ) : (
-          <button
-            onClick={() => onRecord(template)}
-            disabled={recording}
-            className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-bold py-1 px-3 rounded text-sm transition-colors"
-          >
-            記録する
-          </button>
+          <span className="text-xs text-gray-400 dark:text-gray-500 px-2">未記録</span>
         )}
       </div>
     </li>
