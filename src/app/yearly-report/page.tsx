@@ -14,6 +14,7 @@ import { Expense } from '@/types/Expense';
 import { Income } from '@/types/Income';
 import { PaymentMethod } from '@/types/PaymentMethod';
 import MonthlyDataTable from '@/components/dashboard/MonthlyDataTable';
+import DashboardFilterBar from '@/components/dashboard/DashboardFilterBar';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4d4d', '#4dff4d', '#4d4dff', '#ff8c00', '#9932cc', '#20b2aa', '#d2691e'];
 
@@ -41,6 +42,10 @@ const YearlyReportPage = () => {
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map());
   const [incomeCategories, setIncomeCategories] = useState<Map<string, string>>(new Map());
   const [paymentMethods, setPaymentMethods] = useState<Map<string, string>>(new Map());
+
+  // Filter state (same as dashboard)
+  const [showTransfers, setShowTransfers] = useState(false);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -107,7 +112,15 @@ const YearlyReportPage = () => {
 
   // --- Data Processing with useMemo ---
 
-  const totalYearlyExpense = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses]);
+  // Apply filter: transfers and payment method
+  const filteredExpenses = useMemo(() => {
+    let result = expenses;
+    if (!showTransfers) result = result.filter(exp => !exp.isTransfer);
+    if (paymentMethodFilter.length > 0) result = result.filter(exp => paymentMethodFilter.includes(exp.paymentMethodId));
+    return result;
+  }, [expenses, showTransfers, paymentMethodFilter]);
+
+  const totalYearlyExpense = useMemo(() => filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0), [filteredExpenses]);
   const totalYearlyNetIncome = useMemo(() => incomes.reduce((sum, inc) => sum + inc.amount, 0), [incomes]);
   const totalYearlyTax = useMemo(() => incomes.reduce((sum, inc) => sum + (inc.totalTaxableAmount || 0), 0), [incomes]);
 
@@ -115,7 +128,7 @@ const YearlyReportPage = () => {
     const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
     const data = monthNames.map(name => ({ name, "支出": 0, "差引支給額": 0 }));
 
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       const month = getMonth(exp.date.toDate());
       data[month]["支出"] += exp.amount;
     });
@@ -124,7 +137,7 @@ const YearlyReportPage = () => {
       data[month]["差引支給額"] += inc.amount;
     });
     return data;
-  }, [expenses, incomes]);
+  }, [filteredExpenses, incomes]);
 
   const monthlyIncomeByCategoryData = useMemo(() => {
     const monthNames = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
@@ -147,12 +160,12 @@ const YearlyReportPage = () => {
 
   const expenseByCategory = useMemo(() => {
     const dataMap = new Map<string, number>();
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       const name = expenseCategories.get(exp.categoryId) || '未分類';
       dataMap.set(name, (dataMap.get(name) || 0) + exp.amount);
     });
     return Array.from(dataMap.entries()).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
-  }, [expenses, expenseCategories]);
+  }, [filteredExpenses, expenseCategories]);
 
   const incomeByCategory = useMemo(() => {
     const dataMap = new Map<string, number>();
@@ -165,21 +178,21 @@ const YearlyReportPage = () => {
 
   const expenseByStore = useMemo(() => {
     const dataMap = new Map<string, number>();
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       const name = exp.store || '店名なし';
       dataMap.set(name, (dataMap.get(name) || 0) + exp.amount);
     });
     return Array.from(dataMap.entries()).map(([name, value]) => ({ name, value })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   const expenseByPaymentMethod = useMemo(() => {
     const dataMap = new Map<string, number>();
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       const name = paymentMethods.get(exp.paymentMethodId) || '不明';
       dataMap.set(name, (dataMap.get(name) || 0) + exp.amount);
     });
     return Array.from(dataMap.entries()).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
-  }, [expenses, paymentMethods]);
+  }, [filteredExpenses, paymentMethods]);
 
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
@@ -355,7 +368,23 @@ const YearlyReportPage = () => {
 
           {/* --- Pie Chart Grid --- */}
           <div className="mt-12">
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 border-b pb-2 mb-8">年間サマリー</h2>
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 border-b pb-2 mb-4">年間サマリー</h2>
+
+            {/* Filter bar — same as dashboard */}
+            <div className="mb-6">
+              <DashboardFilterBar
+                showTransfers={showTransfers}
+                onShowTransfersChange={setShowTransfers}
+                paymentMethodFilter={paymentMethodFilter}
+                onPaymentMethodFilterChange={setPaymentMethodFilter}
+              />
+              {(paymentMethodFilter.length > 0 || !showTransfers) && (
+                <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-2 pl-1">
+                  ※ 絞り込み中：このページの全グラフに適用されています
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {renderPieChart('カテゴリー別年間合計支出', expenseByCategory)}
               {renderPieChart('収入のカテゴリー別年間合計', incomeByCategory)}
