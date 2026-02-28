@@ -38,6 +38,14 @@ export default function ReceiptsPage() {
   const [movingReceiptId, setMovingReceiptId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Search state
+  const [searchText, setSearchText] = useState('');
+  const [searchAmountMin, setSearchAmountMin] = useState('');
+  const [searchAmountMax, setSearchAmountMax] = useState('');
+  const [searchDateFrom, setSearchDateFrom] = useState('');
+  const [searchDateTo, setSearchDateTo] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+
   useEffect(() => {
     if (authLoading || !user) {
       if (!authLoading) setLoading(false);
@@ -116,7 +124,55 @@ export default function ReceiptsPage() {
     [folders]
   );
 
-  // ── Actions ──────────────────────────────────────────────
+  // Search helpers
+  const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
+
+  const getFolderPathLabel = (folderId: string | null | undefined): string => {
+    if (!folderId) return 'ルート';
+    const parts: string[] = [];
+    let cur: ReceiptFolder | undefined = folders.find(f => f.id === folderId);
+    while (cur) {
+      parts.unshift(cur.name);
+      cur = cur.parentId ? folders.find(f => f.id === cur!.parentId) : undefined;
+    }
+    return parts.join(' / ');
+  };
+
+  const searchResults = useMemo(() => {
+    if (!isSearchActive) return [];
+    return allReceipts.filter(e => {
+      // Text: match receiptName, store, memo
+      if (searchText.trim()) {
+        const q = searchText.trim().toLowerCase();
+        const haystack = [e.receiptName, e.store, e.memo].filter(Boolean).join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      // Amount min
+      if (searchAmountMin !== '' && e.amount < Number(searchAmountMin)) return false;
+      // Amount max
+      if (searchAmountMax !== '' && e.amount > Number(searchAmountMax)) return false;
+      // Date from
+      if (searchDateFrom) {
+        const from = new Date(searchDateFrom);
+        if (e.date.toDate() < from) return false;
+      }
+      // Date to
+      if (searchDateTo) {
+        const to = new Date(searchDateTo);
+        to.setHours(23, 59, 59, 999);
+        if (e.date.toDate() > to) return false;
+      }
+      return true;
+    }).sort((a, b) => b.date.toMillis() - a.date.toMillis());
+  }, [isSearchActive, allReceipts, searchText, searchAmountMin, searchAmountMax, searchDateFrom, searchDateTo]);
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchAmountMin('');
+    setSearchAmountMax('');
+    setSearchDateFrom('');
+    setSearchDateTo('');
+  };
 
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
@@ -242,7 +298,150 @@ export default function ReceiptsPage() {
         </Link>
       </div>
 
-      {/* Breadcrumb */}
+      {/* Search panel */}
+      <div className="mb-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-4 space-y-3">
+        {/* Primary search row */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-grow">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="名前・店名・メモで検索..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-black text-sm"
+            />
+          </div>
+          <button
+            onClick={() => setSearchExpanded(v => !v)}
+            className={`px-3 py-2 text-sm border rounded-md whitespace-nowrap ${searchExpanded ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            詳細条件 {searchExpanded ? '▲' : '▼'}
+          </button>
+          {isSearchActive && (
+            <button
+              onClick={handleClearSearch}
+              className="px-3 py-2 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md whitespace-nowrap"
+            >
+              クリア
+            </button>
+          )}
+        </div>
+
+        {/* Advanced filters */}
+        {searchExpanded && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額 (下限)</label>
+              <input
+                type="number"
+                value={searchAmountMin}
+                onChange={(e) => setSearchAmountMin(e.target.value)}
+                placeholder="¥ 以上"
+                min={0}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額 (上限)</label>
+              <input
+                type="number"
+                value={searchAmountMax}
+                onChange={(e) => setSearchAmountMax(e.target.value)}
+                placeholder="¥ 以下"
+                min={0}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付 (開始)</label>
+              <input
+                type="date"
+                value={searchDateFrom}
+                onChange={(e) => setSearchDateFrom(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付 (終了)</label>
+              <input
+                type="date"
+                value={searchDateTo}
+                onChange={(e) => setSearchDateTo(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+            </div>
+          </div>
+        )}
+
+        {isSearchActive && (
+          <p className="text-xs text-indigo-600 dark:text-indigo-400">
+            {searchResults.length} 件見つかりました（全フォルダ対象）
+          </p>
+        )}
+      </div>
+
+      {/* ── Search results (overrides folder view when active) ── */}
+      {isSearchActive ? (
+        <div>
+          {searchResults.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">条件に一致するレシートが見つかりませんでした。</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {searchResults.map(expense => (
+                <div key={expense.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                  <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                    <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                      {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-semibold">PDFファイル</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={expense.receiptUrl}
+                          alt={expense.receiptName || expense.store || 'レシート'}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                        />
+                      )}
+                    </a>
+                  </div>
+                  <div className="p-3 flex-grow flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                      {expense.receiptName || expense.store || '(名前未設定)'}
+                    </span>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {format(expense.date.toDate(), 'yyyy年MM月dd日')} · ¥{expense.amount.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-indigo-500 dark:text-indigo-400 truncate">
+                      📁 {getFolderPathLabel(expense.receiptFolderId)}
+                    </div>
+                    {expense.memo && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500 line-clamp-2">{expense.memo}</div>
+                    )}
+                    <div className="flex justify-between items-center pt-1 border-t dark:border-gray-700 mt-auto">
+                      <button
+                        onClick={() => { setCurrentFolderId(expense.receiptFolderId ?? null); handleClearSearch(); }}
+                        className="text-xs text-indigo-500 hover:text-indigo-700"
+                      >フォルダへ移動</button>
+                      <button
+                        onClick={() => handleRemoveReceipt(expense.id)}
+                        disabled={removingId === expense.id}
+                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                      >{removingId === expense.id ? '解除中...' : '添付を解除'}</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       <nav className="flex items-center gap-1 mb-4 text-sm flex-wrap">
         <button
           onClick={() => setCurrentFolderId(null)}
@@ -480,6 +679,8 @@ export default function ReceiptsPage() {
             </section>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );
