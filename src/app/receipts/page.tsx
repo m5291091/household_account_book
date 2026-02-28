@@ -51,7 +51,7 @@ export default function ReceiptsPage() {
 
   // Standalone receipt state
   const [standaloneReceipts, setStandaloneReceipts] = useState<StandaloneReceipt[]>([]);
-  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [linkingReceiptId, setLinkingReceiptId] = useState<string | null>(null);
   const [linkModalExpenses, setLinkModalExpenses] = useState<Expense[]>([]);
@@ -61,6 +61,7 @@ export default function ReceiptsPage() {
   const [linkModalDateTo, setLinkModalDateTo] = useState('');
   const [deletingStandaloneId, setDeletingStandaloneId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -299,29 +300,80 @@ export default function ReceiptsPage() {
 
   // ── Standalone receipt handlers ────────────────────────────
 
-  const handleFileUpload = async (file: File) => {
+  /** Recursively collect all files from a dropped FileSystemEntry (file or folder). */
+  const collectFiles = (entry: FileSystemEntry): Promise<File[]> =>
+    new Promise((resolve) => {
+      if (entry.isFile) {
+        (entry as FileSystemFileEntry).file(
+          (f) => resolve([f]),
+          () => resolve([])
+        );
+      } else if (entry.isDirectory) {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const allFiles: File[] = [];
+        const readAll = () => {
+          reader.readEntries(async (entries) => {
+            if (entries.length === 0) { resolve(allFiles); return; }
+            const nested = await Promise.all(entries.map((e) => collectFiles(e)));
+            nested.forEach((f) => allFiles.push(...f));
+            readAll(); // readEntries may return partial batches
+          }, () => resolve(allFiles));
+        };
+        readAll();
+      } else {
+        resolve([]);
+      }
+    });
+
+  /** Upload multiple files sequentially, showing progress. */
+  const handleFilesUpload = async (files: File[]) => {
     if (!user) return;
-    setUploadingFile(true);
-    try {
-      const timestamp = Date.now();
-      const path = `receipts/${user.uid}/standalone/${timestamp}_${file.name}`;
-      const sRef = storageRef(storage, path);
-      await uploadBytes(sRef, file);
-      const fileUrl = await getDownloadURL(sRef);
-      await addDoc(collection(db, 'users', user.uid, 'receipts'), {
-        fileUrl,
-        fileName: file.name,
-        fileType: file.type,
-        storagePath: path,
-        uploadedAt: Timestamp.now(),
-        linkedExpenseId: null,
-      });
-    } catch (e) {
-      console.error(e);
-      alert('アップロードに失敗しました。');
-    } finally {
-      setUploadingFile(false);
+    const accepted = files.filter(
+      (f) => f.type.startsWith('image/') || f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    );
+    if (accepted.length === 0) return;
+    setUploadProgress({ done: 0, total: accepted.length });
+    let done = 0;
+    for (const file of accepted) {
+      try {
+        const path = `receipts/${user.uid}/standalone/${Date.now()}_${file.name}`;
+        const sRef = storageRef(storage, path);
+        await uploadBytes(sRef, file);
+        const fileUrl = await getDownloadURL(sRef);
+        await addDoc(collection(db, 'users', user.uid, 'receipts'), {
+          fileUrl,
+          fileName: file.name,
+          fileType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+          storagePath: path,
+          uploadedAt: Timestamp.now(),
+          linkedExpenseId: null,
+        });
+        done++;
+        setUploadProgress({ done, total: accepted.length });
+      } catch (e) {
+        console.error(e);
+      }
     }
+    setUploadProgress(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const items = Array.from(e.dataTransfer.items);
+    const entries = items
+      .map((item) => item.webkitGetAsEntry())
+      .filter((entry): entry is FileSystemEntry => entry !== null);
+    if (entries.length === 0) {
+      // Fallback for browsers without File System API
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) handleFilesUpload(files);
+      return;
+    }
+    const allFiles: File[] = [];
+    const nested = await Promise.all(entries.map((entry) => collectFiles(entry)));
+    nested.forEach((f) => allFiles.push(...f));
+    if (allFiles.length > 0) handleFilesUpload(allFiles);
   };
 
   const openLinkModal = async (receiptId: string) => {
@@ -430,26 +482,72 @@ export default function ReceiptsPage() {
 
       {/* Upload zone */}
       <div
-        className={`mb-5 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}
+        className={`mb-5 border-2 border-dashed rounded-lg p-5 transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-600'}`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFileUpload(file); }}
-        onClick={() => fileInputRef.current?.click()}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
+        onDrop={handleDrop}
       >
+        {/* Hidden file inputs */}
         <input
           type="file"
           ref={fileInputRef}
           accept="image/*,.pdf"
+          multiple
           className="hidden"
-          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(file); e.target.value = ''; }}
+          onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) handleFilesUpload(files); e.target.value = ''; }}
         />
-        {uploadingFile ? (
-          <p className="text-sm text-indigo-600 dark:text-indigo-400">アップロード中...</p>
+        <input
+          type="file"
+          ref={folderInputRef}
+          accept="image/*,.pdf"
+          multiple
+          className="hidden"
+          onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) handleFilesUpload(files); e.target.value = ''; }}
+        />
+
+        {uploadProgress ? (
+          <div className="text-center py-2">
+            <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+              アップロード中… {uploadProgress.done} / {uploadProgress.total} 件
+            </p>
+            <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all"
+                style={{ width: `${(uploadProgress.done / uploadProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
         ) : (
-          <>
-            <p className="text-sm text-gray-600 dark:text-gray-400">ここにファイルをドロップ、またはクリックして選択</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">対応形式: 画像・PDF</p>
-          </>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex-1 text-center text-sm text-gray-500 dark:text-gray-400">
+              {isDragging
+                ? <span className="text-indigo-600 dark:text-indigo-400 font-medium">ここにドロップ</span>
+                : <span>ファイル・フォルダをここにドラッグ&amp;ドロップ</span>
+              }
+              <span className="block text-xs mt-0.5 text-gray-400 dark:text-gray-500">対応形式: 画像・PDF　複数同時可</span>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                📎 ファイルを選択
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (folderInputRef.current) {
+                    folderInputRef.current.setAttribute('webkitdirectory', '');
+                    folderInputRef.current.click();
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                📁 フォルダを選択
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
