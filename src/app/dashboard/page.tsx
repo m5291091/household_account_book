@@ -20,7 +20,7 @@ const DashboardPage = () => {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showTransfers, setShowTransfers] = useState(false);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -54,18 +54,19 @@ const DashboardPage = () => {
             </button>
           </div>
 
-          {/* グラフ絞り込みフィルター */}
-          <DashboardFilterBar
-            showTransfers={showTransfers}
-            onShowTransfersChange={setShowTransfers}
-            paymentMethodFilter={paymentMethodFilter}
-            onPaymentMethodFilterChange={setPaymentMethodFilter}
-          />
-
-          <div className="space-y-8 mt-8">
+          <div className="space-y-8">
             <DashboardSummary month={currentMonth} />
             <SavingsGoalStatus month={currentMonth} />
             <CreditCardStatus month={currentMonth} />
+
+            {/* グラフ絞り込みフィルター（カード・自動引き落とし予定の下） */}
+            <DashboardFilterBar
+              showTransfers={showTransfers}
+              onShowTransfersChange={setShowTransfers}
+              paymentMethodFilter={paymentMethodFilter}
+              onPaymentMethodFilterChange={setPaymentMethodFilter}
+            />
+
             <IncomeExpenseChart month={currentMonth} showTransfers={showTransfers} />
             <IncomeCategoryChart month={currentMonth} />
             <BudgetStatus month={currentMonth} />

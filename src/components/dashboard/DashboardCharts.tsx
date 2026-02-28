@@ -27,10 +27,10 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 interface DashboardChartsProps {
   month: Date;
   showTransfers?: boolean;
-  paymentMethodFilter?: string;
+  paymentMethodFilter?: string[];
 }
 
-const DashboardCharts = ({ month, showTransfers = false, paymentMethodFilter = '' }: DashboardChartsProps) => {
+const DashboardCharts = ({ month, showTransfers = false, paymentMethodFilter = [] }: DashboardChartsProps) => {
   const { user } = useAuth();
   const [rawExpenses, setRawExpenses] = useState<any[]>([]);
   const [categoryNames, setCategoryNames] = useState<Map<string, string>>(new Map());
@@ -73,7 +73,7 @@ const DashboardCharts = ({ month, showTransfers = false, paymentMethodFilter = '
     const byCategory: Record<string, number> = {};
     rawExpenses.forEach(expense => {
       if (!showTransfers && expense.isTransfer) return;
-      if (paymentMethodFilter && expense.paymentMethodId !== paymentMethodFilter) return;
+      if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(expense.paymentMethodId)) return;
       byCategory[expense.categoryId] = (byCategory[expense.categoryId] || 0) + expense.amount;
     });
     return Array.from(categoryNames.entries())

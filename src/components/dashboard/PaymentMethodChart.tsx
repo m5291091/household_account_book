@@ -10,10 +10,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 interface PaymentMethodChartProps {
   month: Date;
   showTransfers?: boolean;
-  paymentMethodFilter?: string;
+  paymentMethodFilter?: string[];
 }
 
-const PaymentMethodChart = ({ month, showTransfers = false, paymentMethodFilter = '' }: PaymentMethodChartProps) => {
+const PaymentMethodChart = ({ month, showTransfers = false, paymentMethodFilter = [] }: PaymentMethodChartProps) => {
   const { user, loading: authLoading } = useAuth();
   const [rawExpenses, setRawExpenses] = useState<any[]>([]);
   const [paymentMethodNames, setPaymentMethodNames] = useState<Map<string, string>>(new Map());
@@ -56,12 +56,12 @@ const PaymentMethodChart = ({ month, showTransfers = false, paymentMethodFilter 
     const byMethod: Record<string, number> = {};
     rawExpenses.forEach(expense => {
       if (!showTransfers && expense.isTransfer) return;
-      if (paymentMethodFilter && expense.paymentMethodId !== paymentMethodFilter) return;
+      if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(expense.paymentMethodId)) return;
       byMethod[expense.paymentMethodId] = (byMethod[expense.paymentMethodId] || 0) + expense.amount;
     });
     return Array.from(paymentMethodNames.entries())
-      .map(([id, name]) => ({ name, total: byMethod[id] || 0 }))
-      .filter(item => !paymentMethodFilter || item.name === paymentMethodNames.get(paymentMethodFilter));
+      .filter(([id]) => paymentMethodFilter.length === 0 || paymentMethodFilter.includes(id))
+      .map(([id, name]) => ({ name, total: byMethod[id] || 0 }));
   }, [rawExpenses, paymentMethodNames, showTransfers, paymentMethodFilter]);
 
   if (loading) {
