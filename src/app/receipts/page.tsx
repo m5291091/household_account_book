@@ -60,6 +60,15 @@ export default function ReceiptsPage() {
   const [linkModalDateFrom, setLinkModalDateFrom] = useState('');
   const [linkModalDateTo, setLinkModalDateTo] = useState('');
   const [deletingStandaloneId, setDeletingStandaloneId] = useState<string | null>(null);
+
+  // Multi-select state
+  const [selectedStandaloneIds, setSelectedStandaloneIds] = useState<Set<string>>(new Set());
+  const [selectedExistingIds, setSelectedExistingIds] = useState<Set<string>>(new Set());
+  const [bulkDateInput, setBulkDateInput] = useState('');
+  const [showBulkDatePicker, setShowBulkDatePicker] = useState(false);
+  const [showBulkFolderPicker, setShowBulkFolderPicker] = useState(false);
+  const [bulkFolderTarget, setBulkFolderTarget] = useState<string>('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,6 +159,10 @@ export default function ReceiptsPage() {
     () => [{ id: null, label: '📂 ルート' }, ...buildFolderOptions(null, 0)],
     [folders]
   );
+
+  /** Returns the date to use for a standalone receipt's month bucket. */
+  const getStandaloneDisplayDate = (r: StandaloneReceipt): Date =>
+    r.displayDate ? r.displayDate.toDate() : r.uploadedAt.toDate();
 
   // Search helpers
   const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
@@ -398,9 +411,13 @@ export default function ReceiptsPage() {
   const handleLinkReceipt = async (expenseId: string) => {
     if (!user || !linkingReceiptId) return;
     const receipt = standaloneReceipts.find(r => r.id === linkingReceiptId);
-    if (!receipt) return;
+    const expense = linkModalExpenses.find(e => e.id === expenseId);
+    if (!receipt || !expense) return;
     const batch = writeBatch(db);
-    batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), { linkedExpenseId: expenseId });
+    batch.update(doc(db, 'users', user.uid, 'receipts', linkingReceiptId), {
+      linkedExpenseId: expenseId,
+      displayDate: expense.date,
+    });
     batch.update(doc(db, 'users', user.uid, 'expenses', expenseId), {
       receiptUrl: receipt.fileUrl,
       receiptName: receipt.fileName,
@@ -432,6 +449,95 @@ export default function ReceiptsPage() {
     } finally {
       setDeletingStandaloneId(null);
     }
+  };
+
+  // ── Bulk action handlers ─────────────────────────────────
+
+  const toggleStandaloneSelect = (id: string) => {
+    setSelectedStandaloneIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleExistingSelect = (id: string) => {
+    setSelectedExistingIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedStandaloneIds(new Set());
+    setSelectedExistingIds(new Set());
+    setShowBulkDatePicker(false);
+    setShowBulkFolderPicker(false);
+  };
+
+  const totalSelected = selectedStandaloneIds.size + selectedExistingIds.size;
+
+  const handleBulkChangeDate = async () => {
+    if (!user || !bulkDateInput) return;
+    const newTimestamp = Timestamp.fromDate(new Date(bulkDateInput + 'T00:00:00'));
+    const batch = writeBatch(db);
+    selectedStandaloneIds.forEach(id => {
+      batch.update(doc(db, 'users', user.uid, 'receipts', id), { displayDate: newTimestamp });
+    });
+    selectedExistingIds.forEach(id => {
+      batch.update(doc(db, 'users', user.uid, 'expenses', id), { date: newTimestamp });
+    });
+    await batch.commit();
+    clearAllSelections();
+    setBulkDateInput('');
+  };
+
+  const handleBulkMoveFolder = async () => {
+    if (!user) return;
+    const targetId = bulkFolderTarget === '' ? null : bulkFolderTarget;
+    const batch = writeBatch(db);
+    selectedStandaloneIds.forEach(id => {
+      batch.update(doc(db, 'users', user.uid, 'receipts', id), { receiptFolderId: targetId });
+    });
+    selectedExistingIds.forEach(id => {
+      batch.update(doc(db, 'users', user.uid, 'expenses', id), { receiptFolderId: targetId });
+    });
+    await batch.commit();
+    clearAllSelections();
+    setBulkFolderTarget('');
+  };
+
+  const handleBulkDelete = async () => {
+    if (!user || !confirm(`選択した ${totalSelected} 件のレシートを削除しますか？`)) return;
+    const batch = writeBatch(db);
+    for (const id of Array.from(selectedStandaloneIds)) {
+      const r = standaloneReceipts.find(x => x.id === id);
+      if (!r) continue;
+      try { await deleteObject(storageRef(storage, r.storagePath)); } catch {}
+      if (r.linkedExpenseId) {
+        batch.update(doc(db, 'users', user.uid, 'expenses', r.linkedExpenseId), { receiptUrl: '' });
+      }
+      batch.delete(doc(db, 'users', user.uid, 'receipts', id));
+    }
+    selectedExistingIds.forEach(id => {
+      batch.update(doc(db, 'users', user.uid, 'expenses', id), { receiptUrl: '' });
+    });
+    await batch.commit();
+    clearAllSelections();
+  };
+
+  const handleBulkUnlink = async () => {
+    if (!user) return;
+    const toUnlink = standaloneReceipts.filter(r => selectedStandaloneIds.has(r.id) && r.linkedExpenseId);
+    if (toUnlink.length === 0) return;
+    const batch = writeBatch(db);
+    toUnlink.forEach(r => {
+      batch.update(doc(db, 'users', user.uid, 'receipts', r.id), { linkedExpenseId: null, displayDate: null });
+      batch.update(doc(db, 'users', user.uid, 'expenses', r.linkedExpenseId!), { receiptUrl: '' });
+    });
+    await batch.commit();
+    clearAllSelections();
   };
 
   // ── Render ────────────────────────────────────────────────
@@ -479,6 +585,82 @@ export default function ReceiptsPage() {
           ▶
         </button>
       </div>
+
+      {/* Bulk action bar */}
+      {totalSelected > 0 && (
+        <div className="mb-4 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-600 rounded-lg flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+            {totalSelected} 件選択中
+          </span>
+
+          {/* Bulk date change */}
+          {showBulkDatePicker ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={bulkDateInput}
+                onChange={e => setBulkDateInput(e.target.value)}
+                className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              />
+              <button
+                onClick={handleBulkChangeDate}
+                disabled={!bulkDateInput}
+                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded disabled:opacity-40"
+              >適用</button>
+              <button onClick={() => setShowBulkDatePicker(false)} className="text-xs text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setShowBulkDatePicker(true); setShowBulkFolderPicker(false); }}
+              className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+            >📅 日付を変更</button>
+          )}
+
+          {/* Bulk folder move */}
+          {showBulkFolderPicker ? (
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkFolderTarget}
+                onChange={e => setBulkFolderTarget(e.target.value)}
+                className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+              >
+                {folderOptions.map(opt => (
+                  <option key={String(opt.id)} value={opt.id ?? ''}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkMoveFolder}
+                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded"
+              >移動</button>
+              <button onClick={() => setShowBulkFolderPicker(false)} className="text-xs text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setShowBulkFolderPicker(true); setShowBulkDatePicker(false); }}
+              className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+            >📁 フォルダへ移動</button>
+          )}
+
+          {/* Unlink (only if any linked standalone selected) */}
+          {Array.from(selectedStandaloneIds).some(id => standaloneReceipts.find(r => r.id === id)?.linkedExpenseId) && (
+            <button
+              onClick={handleBulkUnlink}
+              className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-300 text-sm rounded hover:bg-amber-200 dark:hover:bg-amber-900/50"
+            >🔗 紐付け解除</button>
+          )}
+
+          {/* Delete */}
+          <button
+            onClick={handleBulkDelete}
+            className="px-3 py-1 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 text-sm rounded hover:bg-red-200 dark:hover:bg-red-900/50"
+          >🗑 削除</button>
+
+          <button
+            onClick={clearAllSelections}
+            className="ml-auto text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >選択解除</button>
+        </div>
+      )}
 
       {/* Upload zone */}
       <div
@@ -552,13 +734,23 @@ export default function ReceiptsPage() {
       </div>
 
       {/* Unlinked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">未紐付きレシート</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).map(receipt => (
-              <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+            {standaloneReceipts.filter(r => r.linkedExpenseId === null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+              <div
+                key={receipt.id}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+              >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
+                  {/* Checkbox overlay */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
+                    className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
+                  >
+                    {selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}
+                  </button>
                   <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
                     {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
@@ -574,7 +766,7 @@ export default function ReceiptsPage() {
                 </div>
                 <div className="p-3 flex flex-col gap-2">
                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(receipt.uploadedAt.toDate(), 'yyyy年MM月dd日')}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
                   <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
                     <button
                       onClick={() => openLinkModal(receipt.id)}
@@ -594,13 +786,23 @@ export default function ReceiptsPage() {
       )}
 
       {/* Linked standalone receipts */}
-      {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).length > 0 && (
+      {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">紐付き済みレシート（アップロード分）</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(r.uploadedAt.toDate(), currentMonth)).map(receipt => (
-              <div key={receipt.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+            {standaloneReceipts.filter(r => r.linkedExpenseId !== null && isSameMonth(getStandaloneDisplayDate(r), currentMonth)).map(receipt => (
+              <div
+                key={receipt.id}
+                className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+              >
                 <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
+                  {/* Checkbox overlay */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleStandaloneSelect(receipt.id); }}
+                    className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedStandaloneIds.has(receipt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
+                  >
+                    {selectedStandaloneIds.has(receipt.id) && <span className="text-xs">✓</span>}
+                  </button>
                   <a href={receipt.fileUrl} target="_blank" rel="noopener noreferrer">
                     {receipt.fileType === 'application/pdf' || receipt.fileName.toLowerCase().endsWith('.pdf') ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
@@ -616,7 +818,7 @@ export default function ReceiptsPage() {
                 </div>
                 <div className="p-3 flex flex-col gap-2">
                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{receipt.fileName}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(receipt.uploadedAt.toDate(), 'yyyy年MM月dd日')}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
                   <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
                     <button
                       onClick={() => handleUnlinkReceipt(receipt)}
@@ -728,8 +930,14 @@ export default function ReceiptsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {searchResults.map(expense => (
-                <div key={expense.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
                   <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleExistingSelect(expense.id); }}
+                      className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedExistingIds.has(expense.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
+                    >
+                      {selectedExistingIds.has(expense.id) && <span className="text-xs">✓</span>}
+                    </button>
                     <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
                       {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
@@ -914,10 +1122,16 @@ export default function ReceiptsPage() {
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">レシート・領収書</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {currentReceipts.map((expense, idx) => (
-                  <div key={expense.id} className="bg-white dark:bg-black border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                  <div key={expense.id} className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}>
 
                     {/* Thumbnail */}
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleExistingSelect(expense.id); }}
+                        className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${selectedExistingIds.has(expense.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white/80 border-gray-400 hover:border-indigo-400'}`}
+                      >
+                        {selectedExistingIds.has(expense.id) && <span className="text-xs">✓</span>}
+                      </button>
                       <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
                         {expense.receiptUrl?.toLowerCase().endsWith('.pdf') ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors">
