@@ -926,7 +926,7 @@ export default function ReceiptsPage() {
 
       {/* Upload zone */}
       <div
-        className={`mb-5 border-2 border-dashed rounded-lg p-5 transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-600'}`}
+        className={`mb-6 border-2 border-dashed rounded-2xl p-6 md:p-8 transition-all ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md scale-[1.01]' : 'border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
         onDragOver={(e) => {
           if (!e.dataTransfer.types.includes('Files')) return;
           e.preventDefault(); setIsDragging(true);
@@ -1133,12 +1133,12 @@ export default function ReceiptsPage() {
                       handleFolderDragOver(folder.id, e);
                     }}
                     onDrop={e => handleFolderDrop(folder.id, e)}
-                    className={`group relative flex flex-col items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    className={`group relative flex flex-col items-center p-4 rounded-xl border cursor-pointer transition-all shadow-sm ${
                       isDropTarget
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 scale-105 shadow-lg'
+                        ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 scale-105 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
                         : isDragHint
                         ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10 border-dashed'
-                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5'
                     }`}
                   >
                     <span className="text-4xl mb-1">{isDropTarget ? '📂' : '📁'}</span>
@@ -1224,7 +1224,7 @@ export default function ReceiptsPage() {
                   draggable={true}
                   onDragStart={e => handleDragStart(receipt.id, e)}
                   onDragEnd={handleDragEnd}
-                  className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all cursor-grab active:cursor-grabbing ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                  className={`bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col hover:-translate-y-0.5 ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : ''}`}
                 >
                   <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                     <button
@@ -1340,7 +1340,7 @@ export default function ReceiptsPage() {
                     draggable={true}
                     onDragStart={e => handleDragStart(receipt.id, e)}
                     onDragEnd={handleDragEnd}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm overflow-hidden flex flex-col transition-all cursor-grab active:cursor-grabbing ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                    className={`bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col hover:-translate-y-0.5 ${selectedStandaloneIds.has(receipt.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : ''}`}
                   >
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700">
                       <button
@@ -1631,7 +1631,7 @@ export default function ReceiptsPage() {
                     draggable={!!standaloneId}
                     onDragStart={standaloneId ? e => handleDragStart(standaloneId, e) : undefined}
                     onDragEnd={standaloneId ? handleDragEnd : undefined}
-                    className={`bg-white dark:bg-black border rounded-lg shadow-sm flex flex-col transition-all relative ${standaloneId ? 'cursor-grab active:cursor-grabbing' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-700'}`}
+                    className={`bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col hover:-translate-y-0.5 ${standaloneId ? 'cursor-grab active:cursor-grabbing' : ''} ${selectedExistingIds.has(expense.id) ? 'border-indigo-500 ring-2 ring-indigo-400' : ''}`}
                   >
                     {/* Thumbnail */}
                     <div className="relative pt-[100%] bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 group rounded-t-lg overflow-hidden">
