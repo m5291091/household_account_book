@@ -636,10 +636,10 @@ export default function ReceiptsPage() {
     setLinkModalDateTo('');
     setLinkModalSelected(new Set());
     try {
-      const snap = await getDocs(
-        query(collection(db, 'users', user.uid, 'expenses'), orderBy('date', 'desc'), limit(200))
-      );
-      setLinkModalExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense)));
+      // Use the already loaded expenses from allExpensesMap
+      const allExpenses = Array.from(allExpensesMap.values());
+      allExpenses.sort((a, b) => b.date.toMillis() - a.date.toMillis());
+      setLinkModalExpenses(allExpenses);
     } catch (e) {
       console.error(e);
     } finally {
