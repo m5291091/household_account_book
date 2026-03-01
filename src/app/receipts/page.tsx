@@ -68,6 +68,7 @@ export default function ReceiptsPage() {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderValue, setRenameFolderValue] = useState('');
   const [draggedReceiptId, setDraggedReceiptId] = useState<string | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
 
   // Multi-select state
@@ -85,7 +86,7 @@ export default function ReceiptsPage() {
 
   // Auto-scroll the page while dragging near viewport edges
   useEffect(() => {
-    if (!draggedReceiptId) {
+    if (!draggedReceiptId && !draggedFolderId) {
       if (dragScrollRef.current !== null) cancelAnimationFrame(dragScrollRef.current);
       return;
     }
@@ -110,7 +111,7 @@ export default function ReceiptsPage() {
       document.removeEventListener('dragover', onDragOver);
       if (dragScrollRef.current !== null) cancelAnimationFrame(dragScrollRef.current);
     };
-  }, [draggedReceiptId]);
+  }, [draggedReceiptId, draggedFolderId]);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -390,6 +391,23 @@ export default function ReceiptsPage() {
     await updateDoc(doc(db, 'users', user.uid, 'receipts', receiptId), { receiptFolderId: folderId ?? null });
   };
 
+  const handleMoveFolder = async (folderIdToMove: string, newParentId: string | null) => {
+    if (!user || folderIdToMove === newParentId) return;
+    
+    // Cycle check: ensure newParentId is not a descendant of folderIdToMove
+    let current = newParentId;
+    while (current) {
+      if (current === folderIdToMove) {
+        alert("フォルダを自分自身またはそのサブフォルダの中に移動することはできません。");
+        return;
+      }
+      const parentFolder = receiptFolders.find(f => f.id === current);
+      current = parentFolder?.parentId ?? null;
+    }
+
+    await updateDoc(doc(db, 'users', user.uid, 'receiptFolders', folderIdToMove), { parentId: newParentId });
+  };
+
   // Drag-drop helpers for moving receipts into folders
   const handleDragStart = (receiptId: string, e: React.DragEvent) => {
     setDraggedReceiptId(receiptId);
@@ -397,7 +415,7 @@ export default function ReceiptsPage() {
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragEnd = () => { setDraggedReceiptId(null); setDropTargetFolderId(null); };
+  const handleDragEnd = () => { setDraggedReceiptId(null); setDraggedFolderId(null); setDropTargetFolderId(null); };
 
   const navigateIntoFolder = (folderId: string) => setFolderPath(prev => [...prev, folderId]);
   const navigateToPath = (index: number) => setFolderPath(prev => prev.slice(0, index + 1));
@@ -411,30 +429,38 @@ export default function ReceiptsPage() {
 
   const handleFolderDrop = async (folderId: string, e: React.DragEvent) => {
     e.preventDefault();
+    const folderIdToMove = e.dataTransfer.getData('application/x-folder-id') || draggedFolderId;
     const receiptId = e.dataTransfer.getData('text/plain') || draggedReceiptId;
     setDropTargetFolderId(null);
     setDraggedReceiptId(null);
-    if (!receiptId || !user) return;
-    await handleMoveToFolder(receiptId, folderId);
+    setDraggedFolderId(null);
+    if (folderIdToMove && user) {
+      if (folderIdToMove !== folderId) {
+        await handleMoveFolder(folderIdToMove, folderId);
+      }
+    } else if (receiptId && user) {
+      await handleMoveToFolder(receiptId, folderId);
+    }
   };
 
   // ── Standalone receipt handlers ────────────────────────────
 
   /** Recursively collect all files from a dropped FileSystemEntry (file or folder). */
-  const collectFiles = (entry: FileSystemEntry): Promise<File[]> =>
+  const collectFiles = (entry: FileSystemEntry, currentPath: string[] = []): Promise<{file: File, path: string[]}[]> =>
     new Promise((resolve) => {
       if (entry.isFile) {
         (entry as FileSystemFileEntry).file(
-          (f) => resolve([f]),
+          (f) => resolve([{file: f, path: currentPath}]),
           () => resolve([])
         );
       } else if (entry.isDirectory) {
         const reader = (entry as FileSystemDirectoryEntry).createReader();
-        const allFiles: File[] = [];
+        const allFiles: {file: File, path: string[]}[] = [];
+        const newPath = [...currentPath, entry.name];
         const readAll = () => {
           reader.readEntries(async (entries) => {
             if (entries.length === 0) { resolve(allFiles); return; }
-            const nested = await Promise.all(entries.map((e) => collectFiles(e)));
+            const nested = await Promise.all(entries.map((e) => collectFiles(e, newPath)));
             nested.forEach((f) => allFiles.push(...f));
             readAll(); // readEntries may return partial batches
           }, () => resolve(allFiles));
@@ -446,27 +472,62 @@ export default function ReceiptsPage() {
     });
 
   /** Upload multiple files sequentially, showing progress. */
-  const handleFilesUpload = async (files: File[]) => {
+  const handleFilesUpload = async (items: {file: File, path: string[]}[]) => {
     if (!user) return;
-    const accepted = files.filter(
-      (f) => f.type.startsWith('image/') || f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    const accepted = items.filter(
+      (i) => i.file.type.startsWith('image/') || i.file.type === 'application/pdf' || i.file.name.toLowerCase().endsWith('.pdf')
     );
     if (accepted.length === 0) return;
     setUploadProgress({ done: 0, total: accepted.length });
+
+    const folderIdCache = new Map<string, string>();
+    const resolveFolderId = async (pathSegments: string[]): Promise<string | null> => {
+      if (pathSegments.length === 0) return currentFolderId;
+      let parentId = currentFolderId;
+      let currentPathStr = '';
+      for (const segment of pathSegments) {
+        currentPathStr = currentPathStr ? `${currentPathStr}/${segment}` : segment;
+        if (folderIdCache.has(currentPathStr)) {
+          parentId = folderIdCache.get(currentPathStr)!;
+        } else {
+          // Check if it exists in local state
+          const existing = receiptFolders.find(f => f.name === segment && (f.parentId ?? null) === parentId);
+          if (existing) {
+            parentId = existing.id;
+            folderIdCache.set(currentPathStr, parentId);
+          } else {
+            // Create in Firestore
+            const newRef = await addDoc(collection(db, 'users', user.uid, 'receiptFolders'), {
+              name: segment,
+              createdAt: Timestamp.now(),
+              parentId: parentId,
+            });
+            parentId = newRef.id;
+            // Also add to local state array optimistically to prevent immediate duplicates
+            receiptFolders.push({ id: parentId, name: segment, createdAt: Timestamp.now(), parentId: parentId });
+            folderIdCache.set(currentPathStr, parentId);
+          }
+        }
+      }
+      return parentId;
+    };
+
     let done = 0;
-    for (const file of accepted) {
+    for (const item of accepted) {
       try {
-        const path = `receipts/${user.uid}/standalone/${Date.now()}_${file.name}`;
+        const targetFolderId = await resolveFolderId(item.path);
+        const path = `receipts/${user.uid}/standalone/${Date.now()}_${item.file.name}`;
         const sRef = storageRef(storage, path);
-        await uploadBytes(sRef, file);
+        await uploadBytes(sRef, item.file);
         const fileUrl = await getDownloadURL(sRef);
         await addDoc(collection(db, 'users', user.uid, 'receipts'), {
           fileUrl,
-          fileName: file.name,
-          fileType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+          fileName: item.file.name,
+          fileType: item.file.type || (item.file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
           storagePath: path,
           uploadedAt: Timestamp.now(),
           linkedExpenseId: null,
+          receiptFolderId: targetFolderId,
         });
         done++;
         setUploadProgress({ done, total: accepted.length });
@@ -487,11 +548,11 @@ export default function ReceiptsPage() {
     if (entries.length === 0) {
       // Fallback for browsers without File System API
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) handleFilesUpload(files);
+      if (files.length > 0) handleFilesUpload(files.map(f => ({ file: f, path: [] })));
       return;
     }
-    const allFiles: File[] = [];
-    const nested = await Promise.all(entries.map((entry) => collectFiles(entry)));
+    const allFiles: {file: File, path: string[]}[] = [];
+    const nested = await Promise.all(entries.map((entry) => collectFiles(entry, [])));
     nested.forEach((f) => allFiles.push(...f));
     if (allFiles.length > 0) handleFilesUpload(allFiles);
   };
@@ -793,7 +854,7 @@ export default function ReceiptsPage() {
           accept="image/*,.pdf"
           multiple
           className="hidden"
-          onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) handleFilesUpload(files); e.target.value = ''; }}
+          onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) handleFilesUpload(files.map(f => ({ file: f, path: [] }))); e.target.value = ''; }}
         />
         <input
           type="file"
@@ -801,7 +862,18 @@ export default function ReceiptsPage() {
           accept="image/*,.pdf"
           multiple
           className="hidden"
-          onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) handleFilesUpload(files); e.target.value = ''; }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length) {
+              const items = files.map(f => {
+                const pathParts = f.webkitRelativePath ? f.webkitRelativePath.split('/') : [];
+                const path = pathParts.length > 1 ? pathParts.slice(0, -1) : [];
+                return { file: f, path };
+              });
+              handleFilesUpload(items);
+            }
+            e.target.value = '';
+          }}
         />
 
         {uploadProgress ? (
@@ -908,7 +980,7 @@ export default function ReceiptsPage() {
           return (
             <div
               onDragOver={e => {
-                if (!e.dataTransfer.types.includes('text/plain')) return;
+                if (!e.dataTransfer.types.includes('text/plain') && !e.dataTransfer.types.includes('application/x-folder-id')) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 setDropTargetFolderId('__parent__');
@@ -916,11 +988,18 @@ export default function ReceiptsPage() {
               onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetFolderId(null); }}
               onDrop={async e => {
                 e.preventDefault();
+                const folderIdToMove = e.dataTransfer.getData('application/x-folder-id') || draggedFolderId;
                 const receiptId = e.dataTransfer.getData('text/plain') || draggedReceiptId;
                 setDropTargetFolderId(null);
+                setDraggedFolderId(null);
                 setDraggedReceiptId(null);
-                if (!receiptId || !user) return;
-                await handleMoveToFolder(receiptId, parentFolderId);
+                if (folderIdToMove && user) {
+                  if (folderIdToMove !== parentFolderId) {
+                    await handleMoveFolder(folderIdToMove, parentFolderId);
+                  }
+                } else if (receiptId && user) {
+                  await handleMoveToFolder(receiptId, parentFolderId);
+                }
               }}
               className={`mb-4 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed text-sm transition-all cursor-default ${
                 isOver
@@ -947,13 +1026,20 @@ export default function ReceiptsPage() {
                 const fileCount = standaloneReceipts.filter(r => r.receiptFolderId === folder.id).length;
                 const subFolderCount = receiptFolders.filter(f => (f.parentId ?? null) === folder.id).length;
                 const isDropTarget = dropTargetFolderId === folder.id;
-                const isDragHint = draggedReceiptId !== null && !isDropTarget;
+                const isDragHint = (draggedReceiptId !== null || draggedFolderId !== null) && !isDropTarget && draggedFolderId !== folder.id;
                 return (
                   <div
                     key={folder.id}
+                    draggable={true}
+                    onDragStart={e => {
+                      setDraggedFolderId(folder.id);
+                      e.dataTransfer.setData('application/x-folder-id', folder.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragEnd={handleDragEnd}
                     onClick={() => { if (renamingFolderId !== folder.id) navigateIntoFolder(folder.id); }}
                     onDragOver={e => {
-                      if (!e.dataTransfer.types.includes('text/plain')) return;
+                      if (!e.dataTransfer.types.includes('text/plain') && !e.dataTransfer.types.includes('application/x-folder-id')) return;
                       handleFolderDragOver(folder.id, e);
                     }}
                     onDrop={e => handleFolderDrop(folder.id, e)}
