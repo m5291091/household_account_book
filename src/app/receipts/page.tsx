@@ -289,6 +289,76 @@ export default function ReceiptsPage() {
     );
   };
 
+  const renderStandaloneLinkedExpensesPopover = (receipt: StandaloneReceipt) => {
+    const linkedIds = receipt.linkedExpenseIds;
+    if (linkedIds.length === 0) return null;
+    return (
+      <div className="relative mt-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActivePopoverId(prev => prev === receipt.id ? null : receipt.id);
+          }}
+          className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+        >
+          🔗 {linkedIds.length}件の支出 ▾
+        </button>
+        {activePopoverId === receipt.id && (
+          <div
+            className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute bottom-[-6px] left-5 w-3 h-3 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45" />
+            <div className="px-3 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">紐付けられた支出（{linkedIds.length}件）</p>
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-b-xl">
+              {linkedIds.map(eid => {
+                const e = allExpensesMap.get(eid);
+                if (!e) return null;
+                const categoryName = categories.find(c => c.id === e.categoryId)?.name ?? e.categoryId;
+                const paymentName = paymentMethods.find(p => p.id === e.paymentMethodId)?.name ?? e.paymentMethodId;
+                return (
+                  <div
+                    key={eid}
+                    className="px-3 py-2.5 text-xs border-b last:border-b-0 border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="font-semibold truncate flex items-center gap-1 text-gray-800 dark:text-gray-100">
+                        {e.store || '(店名なし)'}
+                      </div>
+                      <Link
+                        href={`/dashboard/edit-expense/${eid}`}
+                        onClick={() => setActivePopoverId(null)}
+                        className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+                      >
+                        編集
+                      </Link>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{format(e.date.toDate(), 'yyyy/MM/dd')}</span>
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        ¥{e.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                        🏷 {categoryName}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                        💳 {paymentName}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Search helpers
   const isSearchActive = searchText.trim() !== '' || searchAmountMin !== '' || searchAmountMax !== '' || searchDateFrom !== '' || searchDateTo !== '';
 
@@ -1147,6 +1217,7 @@ export default function ReceiptsPage() {
                       </div>
                     )}
                     <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                    {renderStandaloneLinkedExpensesPopover(receipt)}
                     {/* Move to folder dropdown */}
                     <select
                       value=""
@@ -1155,7 +1226,7 @@ export default function ReceiptsPage() {
                         else if (e.target.value) handleMoveToFolder(receipt.id, e.target.value);
                       }}
                       onClick={e => e.stopPropagation()}
-                      className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-gray-600 dark:text-gray-400"
+                      className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-gray-600 dark:text-gray-400 mt-1"
                     >
                       <option value="" disabled>📁 フォルダに移動...</option>
                       <option value="__parent__">↩ 取り出す</option>
@@ -1163,9 +1234,11 @@ export default function ReceiptsPage() {
                         <option key={f.id} value={f.id}>{f.label}</option>
                       ))}
                     </select>
-                    <div className="flex flex-wrap gap-1.5 pt-1 border-t dark:border-gray-700">
-                      <button onClick={() => openLinkModal(receipt.id)} className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-2 rounded">支出と紐付け</button>
-                      <button onClick={() => handleDeleteStandaloneReceipt(receipt)} disabled={deletingStandaloneId === receipt.id} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t dark:border-gray-700 mt-auto">
+                      <button onClick={() => openLinkModal(receipt.id)} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline text-left">
+                        {receipt.linkedExpenseIds.length > 0 ? '他の支出にも紐付け' : '支出と紐付け'}
+                      </button>
+                      <button onClick={() => handleDeleteStandaloneReceipt(receipt)} disabled={deletingStandaloneId === receipt.id} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 ml-auto">
                         {deletingStandaloneId === receipt.id ? '削除中...' : '削除'}
                       </button>
                     </div>
@@ -1236,13 +1309,14 @@ export default function ReceiptsPage() {
                         </div>
                       )}
                       <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                      {renderStandaloneLinkedExpensesPopover(receipt)}
                       {/* Folder selector */}
                       {allFoldersList.length > 0 && (
                         <select
                           value=""
                           onChange={e => { if (e.target.value) handleMoveToFolder(receipt.id, e.target.value); }}
                           onClick={e => e.stopPropagation()}
-                          className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-gray-600 dark:text-gray-400"
+                          className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black text-gray-600 dark:text-gray-400 mt-1"
                         >
                           <option value="" disabled>📁 フォルダに移動...</option>
                           {allFoldersList.map(f => (
@@ -1250,9 +1324,11 @@ export default function ReceiptsPage() {
                           ))}
                         </select>
                       )}
-                      <div className="flex gap-2 pt-1 border-t dark:border-gray-700">
-                        <button onClick={() => openLinkModal(receipt.id)} className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-2 rounded">支出と紐付け</button>
-                        <button onClick={() => handleDeleteStandaloneReceipt(receipt)} disabled={deletingStandaloneId === receipt.id} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t dark:border-gray-700 mt-auto">
+                        <button onClick={() => openLinkModal(receipt.id)} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline text-left">
+                          {receipt.linkedExpenseIds.length > 0 ? '他の支出にも紐付け' : '支出と紐付け'}
+                        </button>
+                        <button onClick={() => handleDeleteStandaloneReceipt(receipt)} disabled={deletingStandaloneId === receipt.id} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 ml-auto">
                           {deletingStandaloneId === receipt.id ? '削除中...' : '削除'}
                         </button>
                       </div>
