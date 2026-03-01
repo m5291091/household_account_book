@@ -67,9 +67,15 @@ export default function ReceiptsPage() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderValue, setRenameFolderValue] = useState('');
+  const [editingMemoFolderId, setEditingMemoFolderId] = useState<string | null>(null);
+  const [memoFolderValue, setMemoFolderValue] = useState('');
   const [draggedReceiptId, setDraggedReceiptId] = useState<string | null>(null);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
+
+  // Standalone receipt state additions for memo
+  const [editingMemoStandaloneId, setEditingMemoStandaloneId] = useState<string | null>(null);
+  const [memoStandaloneValue, setMemoStandaloneValue] = useState('');
 
   // Multi-select state
   const [selectedStandaloneIds, setSelectedStandaloneIds] = useState<Set<string>>(new Set());
@@ -443,6 +449,12 @@ export default function ReceiptsPage() {
     setRenamingFolderId(null);
   };
 
+  const handleSaveFolderMemo = async (folderId: string) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'receiptFolders', folderId), { memo: memoFolderValue.trim() });
+    setEditingMemoFolderId(null);
+  };
+
   const handleDeleteFolder = async (folderId: string) => {
     if (!user) return;
     if (!confirm('このフォルダを削除しますか？フォルダ内のファイルはルートに移動されます。')) return;
@@ -709,6 +721,14 @@ export default function ReceiptsPage() {
       fileName: renameStandaloneValue.trim(),
     });
     setRenamingStandaloneId(null);
+  };
+
+  const handleSaveStandaloneMemo = async (receiptId: string) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'receipts', receiptId), {
+      memo: memoStandaloneValue.trim(),
+    });
+    setEditingMemoStandaloneId(null);
   };
 
   const handleDeleteStandaloneReceipt = async (receipt: StandaloneReceipt) => {
@@ -1142,6 +1162,30 @@ export default function ReceiptsPage() {
                     <span className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       {fileCount}件{subFolderCount > 0 ? ` · ${subFolderCount}フォルダ` : ''}
                     </span>
+                    {editingMemoFolderId === folder.id ? (
+                      <div className="mt-1.5 w-full" onClick={e => e.stopPropagation()}>
+                        <textarea
+                          value={memoFolderValue}
+                          onChange={e => setMemoFolderValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveFolderMemo(folder.id);
+                            if (e.key === 'Escape') setEditingMemoFolderId(null);
+                          }}
+                          autoFocus
+                          placeholder="メモ (Ctrl+Enter)"
+                          className="w-full text-xs px-1.5 py-1 border border-indigo-400 rounded bg-white dark:bg-black focus:outline-none resize-none"
+                          rows={2}
+                        />
+                        <div className="flex justify-end gap-1 mt-0.5">
+                          <button onClick={() => handleSaveFolderMemo(folder.id)} className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] rounded">保存</button>
+                          <button onClick={() => setEditingMemoFolderId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded">✕</button>
+                        </div>
+                      </div>
+                    ) : folder.memo && (
+                      <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 w-full text-center px-1">
+                        {folder.memo}
+                      </div>
+                    )}
                     {/* Hover actions */}
                     <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                       <button
@@ -1149,6 +1193,11 @@ export default function ReceiptsPage() {
                         onClick={() => { setRenamingFolderId(folder.id); setRenameFolderValue(folder.name); }}
                         className="w-6 h-6 flex items-center justify-center rounded bg-white/80 dark:bg-gray-700/80 text-gray-600 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 text-xs"
                       >✎</button>
+                      <button
+                        title="メモを編集"
+                        onClick={() => { setEditingMemoFolderId(folder.id); setMemoFolderValue(folder.memo || ''); }}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-white/80 dark:bg-gray-700/80 text-gray-600 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 text-xs"
+                      >📝</button>
                       <button
                         title="削除"
                         onClick={() => handleDeleteFolder(folder.id)}
@@ -1216,7 +1265,31 @@ export default function ReceiptsPage() {
                         <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
                       </div>
                     )}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                      <button title="メモを編集" onClick={() => { setEditingMemoStandaloneId(receipt.id); setMemoStandaloneValue(receipt.memo || ''); }} className="text-xs text-blue-500 hover:text-blue-700">📝 メモ</button>
+                    </div>
+                    {editingMemoStandaloneId === receipt.id ? (
+                      <div className="mt-1">
+                        <textarea
+                          value={memoStandaloneValue}
+                          onChange={e => setMemoStandaloneValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveStandaloneMemo(receipt.id); if (e.key === 'Escape') setEditingMemoStandaloneId(null); }}
+                          autoFocus
+                          placeholder="メモ (Ctrl+Enter)"
+                          className="w-full text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black resize-none"
+                          rows={2}
+                        />
+                        <div className="flex justify-end gap-1 mt-1">
+                          <button onClick={() => handleSaveStandaloneMemo(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded">保存</button>
+                          <button onClick={() => setEditingMemoStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-[10px] rounded">✕</button>
+                        </div>
+                      </div>
+                    ) : receipt.memo && (
+                      <div className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-1.5 rounded line-clamp-2">
+                        {receipt.memo}
+                      </div>
+                    )}
                     {renderStandaloneLinkedExpensesPopover(receipt)}
                     {/* Move to folder dropdown */}
                     <select
@@ -1308,7 +1381,31 @@ export default function ReceiptsPage() {
                           <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
                         </div>
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
+                        <button title="メモを編集" onClick={() => { setEditingMemoStandaloneId(receipt.id); setMemoStandaloneValue(receipt.memo || ''); }} className="text-xs text-blue-500 hover:text-blue-700">📝 メモ</button>
+                      </div>
+                      {editingMemoStandaloneId === receipt.id ? (
+                        <div className="mt-1">
+                          <textarea
+                            value={memoStandaloneValue}
+                            onChange={e => setMemoStandaloneValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveStandaloneMemo(receipt.id); if (e.key === 'Escape') setEditingMemoStandaloneId(null); }}
+                            autoFocus
+                            placeholder="メモ (Ctrl+Enter)"
+                            className="w-full text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black resize-none"
+                            rows={2}
+                          />
+                          <div className="flex justify-end gap-1 mt-1">
+                            <button onClick={() => handleSaveStandaloneMemo(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded">保存</button>
+                            <button onClick={() => setEditingMemoStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-[10px] rounded">✕</button>
+                          </div>
+                        </div>
+                      ) : receipt.memo && (
+                        <div className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-1.5 rounded line-clamp-2">
+                          {receipt.memo}
+                        </div>
+                      )}
                       {renderStandaloneLinkedExpensesPopover(receipt)}
                       {/* Folder selector */}
                       {allFoldersList.length > 0 && (

@@ -5,6 +5,7 @@ export interface ReceiptFolder {
   name: string;
   createdAt: Timestamp;
   parentId: string | null;
+  memo?: string;
 }
 
 export interface StandaloneReceipt {
