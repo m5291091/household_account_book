@@ -91,6 +91,15 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const adjustDate = (days: number) => {
+    setFormData(prev => {
+      if (!prev.date) return prev;
+      const date = new Date(prev.date);
+      date.setDate(date.getDate() + days);
+      return { ...prev, date: date.toISOString().split('T')[0] };
+    });
+  };
+
   const handleAddCategory = async (name: string) => {
     if (!user) return;
     await addDoc(collection(db, 'users', user.uid, 'incomeCategories'), { name });
@@ -201,7 +210,23 @@ const IncomeForm = forwardRef(({ incomeToEdit, onFormClose }: IncomeFormProps, r
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">日付</label>
-          <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+          <div className="mt-1 flex items-center">
+            <button
+              type="button"
+              onClick={() => adjustDate(-1)}
+              className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              ◀
+            </button>
+            <input ref={dateRef} type="date" name="date" id="date" value={formData.date} onChange={handleChange} onKeyDown={handleKeyDown} required className="block w-full px-3 py-2 bg-white dark:bg-black border-y border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-center"/>
+            <button
+              type="button"
+              onClick={() => adjustDate(1)}
+              className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              ▶
+            </button>
+          </div>
         </div>
         <div>
           <label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-200">収入源</label>
