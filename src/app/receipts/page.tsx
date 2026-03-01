@@ -1126,10 +1126,26 @@ export default function ReceiptsPage() {
                     </a>
                   </div>
                   <div className="p-3 flex flex-col gap-2">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
-                      <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
-                    </div>
+                    {renamingStandaloneId === receipt.id ? (
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={renameStandaloneValue}
+                          onChange={e => setRenameStandaloneValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleRenameStandalone(receipt.id); if (e.key === 'Escape') setRenamingStandaloneId(null); }}
+                          autoFocus
+                          placeholder="ファイル名を入力"
+                          className="flex-grow px-2 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-black"
+                        />
+                        <button onClick={() => handleRenameStandalone(receipt.id)} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">保存</button>
+                        <button onClick={() => setRenamingStandaloneId(null)} className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded">✕</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-grow">{receipt.fileName}</span>
+                        <button title="名前を変更" onClick={() => { setRenamingStandaloneId(receipt.id); setRenameStandaloneValue(receipt.fileName); }} className="flex-shrink-0 text-sm text-blue-500 hover:text-blue-700">✎</button>
+                      </div>
+                    )}
                     <span className="text-xs text-gray-500 dark:text-gray-400">{format(getStandaloneDisplayDate(receipt), 'yyyy年MM月dd日')}</span>
                     {/* Move to folder dropdown */}
                     <select
